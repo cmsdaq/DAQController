@@ -1,0 +1,72 @@
+title Recovery (focus dashboard)
+
+Expert-->Dashboard: New condition (recoveryId:1)
+Expert-->Dashboard: New dominating (recoveryId:1)
+
+
+Controller->+Dashboard: New Recovery
+Controller->+Dashboard: Approve request (recoveryId:1)
+
+note left of Controller
+recoveryId: 1
+conditionIds: [1]
+requestIds: [1]
+end note
+
+Expert-->Dashboard: Condition update
+note right of Expert
+update body
+end note
+
+Dashboard->-Controller: Approve response
+
+note right of Dashboard
+recoveryId: 1
+stepId: 0
+end note
+
+Controller-->Dashboard: Recovery status update
+note left of Controller
+recoveryId: 1
+
+automatedSteps: {}
+end note
+
+
+Expert-->Dashboard: Condition update
+
+Controller-->Dashboard: Recovery status update
+
+
+Expert-->Dashboard: New condition (recoveryId:2)
+Expert-->Dashboard: New dominating (recoveryId:2)
+
+Controller->+Dashboard: Approve request (recoveryId:2)
+note left of Controller
+recoveryId: 1
+conditionIds: [1,2]
+requestIds: [1,2,3]
+end note
+Dashboard->-Controller: Approve response
+Controller-->Dashboard: Recovery status update
+note right of Controller
+Approve request is always followed
+by recovery status update to notify
+other clients they cannot accept now
+end note
+
+
+Controller-->Dashboard: Recovery finished
+note left of Controller
+update body
+end note
+
+Dashboard ->+ Dashboard: start timer
+Dashboard ->- Dashboard: timer finishes
+Dashboard ->- Dashboard: remove recovery
+
+
+
+Expert-->Dashboard: New condition (recoveryId:1)
+Expert-->Dashboard: New dominating (recoveryId:1)
+
