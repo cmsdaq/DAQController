@@ -1,0 +1,12 @@
+Basic scenarios
+1. Single condition situation - one recovery solves
+2. Multiple condition situation - 2 recovery steps solves
+3. Preemption before accepted
+4. Preemption after accepted
+
+Corner cases
+1. Multiple clients have open dashboard - try to approve the request
+2. Client connects to Dashboard in the middle of recovery
+3. Recovery interrupted
+4. Less important condition emerges while pervious is in observe period - results in postponement
+5. More important preempts one, than disappears quiclky and less important will be back to accept

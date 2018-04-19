@@ -1,62 +1,56 @@
-package ch.cern.cms.daq.expertcontroller;
+package ch.cern.cms.daq.expertcontroller.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.Fetch;
 
 import javax.persistence.*;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Set;
 
-@Entity
-public class RecoveryRequest {
 
+/**
+ * Part of recovery request that is sent from expert
+ */
+@Entity
+public class RecoveryRequestStep {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id;
+    private Long id;
 
     /**
-     * Description of the problem that will be recovered
+     * Step ordinal number in procedure
      */
-    String problemDescription;
-
-    /**
-     * Steps that cannot be automatized and must be done manually
-     */
-    @Transient
-    Set<String> manualSteps;
-
+    int stepIndex;
 
     /**
      * Subsystems to red recycle
      */
-    @Transient
+    @ElementCollection(fetch = FetchType.EAGER)
     Set<String> redRecycle;
 
     /**
      * Subsystems to green recycle
      */
-    @Transient
+    @ElementCollection(fetch = FetchType.EAGER)
     Set<String> greenRecycle;
 
     /**
      * Subsystems to blame
      */
-    @Transient
+    @ElementCollection(fetch = FetchType.EAGER)
     Set<String> fault;
 
     /**
-
      * Subsystems to reset. Some schedules could have been planned by shifter. This will reset that actions.
      */
-    @Transient
+    @ElementCollection(fetch = FetchType.EAGER)
     Set<String> reset;
 
     @JsonIgnore
     String status;
 
     Date started;
-
 
     Date finished;
 
@@ -84,38 +78,12 @@ public class RecoveryRequest {
         this.reset = reset;
     }
 
-
-
     public Set<String> getRedRecycle() {
         return redRecycle;
     }
 
     public void setRedRecycle(Set<String> redRecycle) {
         this.redRecycle = redRecycle;
-    }
-
-    public String getProblemDescription() {
-        return problemDescription;
-    }
-
-    public void setProblemDescription(String problemDescription) {
-        this.problemDescription = problemDescription;
-    }
-
-    public Set<String> getManualSteps() {
-        return manualSteps;
-    }
-
-    public void setManualSteps(Set<String> manualSteps) {
-        this.manualSteps = manualSteps;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getStatus() {
@@ -125,7 +93,6 @@ public class RecoveryRequest {
     public void setStatus(String status) {
         this.status = status;
     }
-
 
     public Date getFinished() {
         return finished;
@@ -141,6 +108,14 @@ public class RecoveryRequest {
 
     public void setStarted(Date started) {
         this.started = started;
+    }
+
+    public int getStepIndex() {
+        return stepIndex;
+    }
+
+    public void setStepIndex(int stepIndex) {
+        this.stepIndex = stepIndex;
     }
 
 
