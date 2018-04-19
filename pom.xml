@@ -5,7 +5,7 @@
 
 	<groupId>ch.cern.cms.daq</groupId>
 	<artifactId>expert-controller</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>expert-controller</name>
