@@ -1,0 +1,59 @@
+title Recovery
+
+Expert->+Expert: Condition starts
+Expert-->Dashboard: New condition (recoveryId:1)
+Expert-->Dashboard: New dominating (recoveryId:1)
+Expert->+Controller: Recovery request (recoveryId:1)
+
+Controller->+Dashboard: Approve request (recoveryId:1)
+Dashboard->Controller: Approve request
+
+Controller->+Controller: Start recovery
+
+Controller-->Dashboard: Recovery status update
+
+Expert->-Expert: Condition ends
+
+note right of Controller
+    recoveryId: 1
+    requestsIds: [1]
+    conditionIds: [1]
+end note
+
+
+Controller-->Dashboard: Recovery status update
+
+Controller->-Controller: End recovery
+
+Controller->+Controller: Observe
+
+Expert->+Expert: Condition starts
+
+
+Expert-->Dashboard: New condition (recoveryId:2)
+Expert-->Dashboard: New dominating (recoveryId:2)
+
+Expert->+Controller: Recovery request (recoveryId:2)
+Controller->-Expert: Rejected
+Expert->Controller: Recovery request: same (recoveryId:3)
+
+Controller->-Controller: Stop observe
+
+
+Controller->+Dashboard: Approve request (recoveryId:2)
+Dashboard->-Controller: Approve request
+
+note right of Controller: Second step
+note right of Controller
+    recoveryId: 1
+    requestsIds: [1,2,3]
+    conditionIds: [1,2]
+end note
+
+Controller->-Dashboard: Recovery finished
+
+Dashboard ->+ Dashboard: start timer
+Dashboard ->- Dashboard: timer finishes
+Dashboard ->- Dashboard: remove recovery
+
+
