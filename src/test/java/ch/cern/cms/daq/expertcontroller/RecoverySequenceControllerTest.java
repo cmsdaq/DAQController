@@ -73,7 +73,7 @@ public class RecoverySequenceControllerTest {
         assertThat(all, contains(
                 hasProperty("name", startsWith("Recovery of")),
                 hasProperty("name", is("Waiting for approval")),
-                hasProperty("name", startsWith("Executing step"))
+                hasProperty("name", startsWith("Executing "))
         ));
         assertThat(all, hasItem(allOf(
                 hasProperty("name", is("Waiting for approval")),
@@ -88,12 +88,12 @@ public class RecoverySequenceControllerTest {
         assertThat(all, contains(
                 hasProperty("name", startsWith("Recovery of")),
                 hasProperty("name", is("Waiting for approval")),
-                hasProperty("name", startsWith("Executing step")),
+                hasProperty("name", startsWith("Executing ")),
                 hasProperty("name", startsWith("Observing"))
         ));
 
         assertThat(all, hasItem(allOf(
-                hasProperty("name", startsWith("Executing step")),
+                hasProperty("name", startsWith("Executing ")),
                 hasProperty("start", notNullValue()),
                 hasProperty("end", notNullValue()))
         ));
@@ -107,7 +107,7 @@ public class RecoverySequenceControllerTest {
         assertThat(all, contains(
                 hasProperty("name", startsWith("Recovery of")),
                 hasProperty("name", is("Waiting for approval")),
-                hasProperty("name", startsWith("Executing step")),
+                hasProperty("name", startsWith("Executing ")),
                 hasProperty("name", startsWith("Observing"))
         ));
         assertThat(all, hasItem(allOf(
