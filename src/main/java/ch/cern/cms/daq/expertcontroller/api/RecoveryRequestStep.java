@@ -23,6 +23,8 @@ public class RecoveryRequestStep {
      */
     int stepIndex;
 
+    String humanReadable;
+
     /**
      * Subsystems to red recycle
      */
@@ -128,6 +130,14 @@ public class RecoveryRequestStep {
 
     public void setTimesExecuted(Integer timesExecuted) {
         this.timesExecuted = timesExecuted;
+    }
+
+    public String getHumanReadable() {
+        return humanReadable;
+    }
+
+    public void setHumanReadable(String humanReadable) {
+        this.humanReadable = humanReadable;
     }
 
     @Override

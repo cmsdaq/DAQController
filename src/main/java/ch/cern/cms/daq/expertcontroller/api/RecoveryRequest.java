@@ -46,6 +46,8 @@ public class RecoveryRequest {
     @ElementCollection
     private List<RecoveryRequestStep> recoverySteps;
 
+    String problemTitle;
+
     /**
      * Description of the problem that will be recovered
      */
@@ -117,6 +119,14 @@ public class RecoveryRequest {
         this.withPostponement = withPostponement;
     }
 
+    public String getProblemTitle() {
+        return problemTitle;
+    }
+
+    public void setProblemTitle(String problemTitle) {
+        this.problemTitle = problemTitle;
+    }
+
     @Override
     public String toString() {
         return "RecoveryRequest{" +
@@ -127,6 +137,7 @@ public class RecoveryRequest {
                 ", isSameProblem=" + isSameProblem +
                 ", withPostponement=" + withPostponement +
                 ", recoverySteps=" + recoverySteps +
+                ", problemTitle='" + problemTitle + '\'' +
                 ", problemDescription='" + problemDescription + '\'' +
                 '}';
     }
