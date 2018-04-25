@@ -125,6 +125,7 @@ public class RecoveryRequest {
                 ", status='" + status + '\'' +
                 ", withInterrupt=" + withInterrupt +
                 ", isSameProblem=" + isSameProblem +
+                ", withPostponement=" + withPostponement +
                 ", recoverySteps=" + recoverySteps +
                 ", problemDescription='" + problemDescription + '\'' +
                 '}';

@@ -10,3 +10,7 @@ Corner cases
 3. Recovery interrupted
 4. Less important condition emerges while pervious is in observe period - results in postponement
 5. More important preempts one, than disappears quiclky and less important will be back to accept
+
+Exception cases
+1. Controller is unavailable and expert sends the requests
+2.

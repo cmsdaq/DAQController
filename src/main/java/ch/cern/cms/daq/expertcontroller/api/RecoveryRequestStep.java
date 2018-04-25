@@ -54,6 +54,10 @@ public class RecoveryRequestStep {
 
     Date finished;
 
+
+    /** How many times executed */
+    private Integer timesExecuted;
+
     public Set<String> getGreenRecycle() {
         return greenRecycle;
     }
@@ -118,14 +122,27 @@ public class RecoveryRequestStep {
         this.stepIndex = stepIndex;
     }
 
+    public Integer getTimesExecuted() {
+        return timesExecuted;
+    }
+
+    public void setTimesExecuted(Integer timesExecuted) {
+        this.timesExecuted = timesExecuted;
+    }
 
     @Override
     public String toString() {
-        return "RecoveryRequest{" +
-                "redRecycle=" + redRecycle +
+        return "RecoveryRequestStep{" +
+                "id=" + id +
+                ", stepIndex=" + stepIndex +
+                ", redRecycle=" + redRecycle +
                 ", greenRecycle=" + greenRecycle +
                 ", fault=" + fault +
                 ", reset=" + reset +
+                ", status='" + status + '\'' +
+                ", started=" + started +
+                ", finished=" + finished +
+                ", timesExecuted=" + timesExecuted +
                 '}';
     }
 }

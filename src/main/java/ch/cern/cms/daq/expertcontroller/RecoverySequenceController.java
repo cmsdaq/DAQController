@@ -29,7 +29,10 @@ public class RecoverySequenceController {
     @Autowired
     private RecoveryManager recoveryManager;
 
-    private final static int observePeriod = 10000;
+    /**
+     * Period of time to observe system in order to decide if recovery should be continued of finished
+     */
+    public final static int observePeriod = 20000;
 
     private final static Logger logger = Logger.getLogger(RecoverySequenceController.class);
 

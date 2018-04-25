@@ -69,7 +69,6 @@ public class RecoveryManager {
     private RecoveryRequest waitingRequest;
 
 
-
     /**
      * Submit new recovery request. This method will handle everything from filtering the request, requesting operator
      * approval to performing the recovery and persisting the status
@@ -110,8 +109,11 @@ public class RecoveryManager {
 
                 request.setStatus("acceptedToContinue");
                 response.setContinuesTheConditionId(currentRequest.getProblemId());
+
+                getStepExecutionCount(currentRequest, request);
                 recoveryJobRepository.save(request);
                 recoverySequenceController.continueSame(request.getProblemId());
+
 
                 setupRecoveryRequest(request); // pass current request
                 break;
@@ -136,6 +138,16 @@ public class RecoveryManager {
 
     }
 
+    private void getStepExecutionCount(RecoveryRequest previousRequest, RecoveryRequest nextRequest) {
+        for (RecoveryRequestStep step : previousRequest.getRecoverySteps()) {
+            RecoveryRequestStep correspondingStep = nextRequest.getRecoverySteps().stream().filter(s -> s.getStepIndex() == step.getStepIndex()).findFirst().orElse(null);
+            if (correspondingStep != null) {
+                correspondingStep.setTimesExecuted(step.getTimesExecuted());
+            }
+
+        }
+    }
+
     private String acceptRecoveryRequest(RecoveryRequest request) {
 
         String result;
@@ -150,7 +162,7 @@ public class RecoveryManager {
             } else if (request.isSameProblem() && recoverySequenceController.getCurrentStatus() == ch.cern.cms.daq.expertcontroller.RecoveryStatus.Observe) {
                 logger.debug("Currently recovery continues with next condition");
                 result = "acceptedToContinue";
-            } else if (request.isWithPostponement()){
+            } else if (request.isWithPostponement()) {
                 logger.info("This request will be postponed");
                 result = "acceptedToPostpone";
 
@@ -198,6 +210,8 @@ public class RecoveryManager {
 
             response.setAutomatedSteps(new ArrayList<>());
             response.setId(recoveryRecord.getId());
+            response.setStartDate(recoveryRecord.getStart());
+            response.setEndDate(recoveryRecord.getEnd());
 
             String status;
             List<RecoveryRequestStep> recoverySteps;
@@ -221,6 +235,7 @@ public class RecoveryManager {
                 stepStatus.setStarted(recoveryRequestStep.getStarted());
                 stepStatus.setFinished(recoveryRequestStep.getFinished());
                 stepStatus.setRcmsStatus(recoveryRequestStep.getStatus());
+                stepStatus.setTimesExecuted(recoveryRequestStep.getTimesExecuted());
                 if (recoveryRequestStep.getFinished() != null) {
                     stepStatus.setStatus("finished");
                 } else {
@@ -293,6 +308,9 @@ public class RecoveryManager {
             recoveryRequestStep.setStatus("approved");
             recoveryRequestStep.setStarted(new Date());
             recoveryRequestStep.setFinished(null);
+            if (recoveryRequestStep.getTimesExecuted() == null) {
+                recoveryRequestStep.setTimesExecuted(0);
+            }
 
             recoverySequenceController.accept();
             recoveryJobRepository.save(request);
@@ -302,6 +320,7 @@ public class RecoveryManager {
 
                 rcmsController.recoverAndWait(request, recoveryRequestStep);
                 recoveryRequestStep.setStatus("finished");
+                recoveryRequestStep.setTimesExecuted(recoveryRequestStep.getTimesExecuted() + 1);
                 recoveryRequestStep.setFinished(new Date());
                 recoveryJobRepository.save(request);
                 recoverySequenceController.stepCompleted();
@@ -310,7 +329,7 @@ public class RecoveryManager {
 
             } catch (LV0AutomatorControlException e) {
 
-                recoveryRequestStep.setStatus("failed");
+                recoveryRequestStep.setStarted(new Date());
                 recoveryJobRepository.save(request);
                 dashboardController.notifyRecoveryStatus(getStatus());
                 e.printStackTrace();
@@ -381,9 +400,9 @@ public class RecoveryManager {
         dashboardController.notifyRecoveryStatus(getStatus());
         lastRequest = currentRequest;
 
-        if(waitingRequest == null){
+        if (waitingRequest == null) {
             currentRequest = null;
-        } else{
+        } else {
             recoverySequenceController.start(waitingRequest.getProblemId());
             setupRecoveryRequest(waitingRequest);
             waitingRequest = null;
@@ -404,7 +423,7 @@ public class RecoveryManager {
             logger.info("Ignoring finished signal, no condition with " + id);
         }
 
-        if(waitingRequest != null && waitingRequest.getProblemId() == id){
+        if (waitingRequest != null && waitingRequest.getProblemId() == id) {
             logger.info("Removing waiting request, condition with id " + id + " has finished");
             waitingRequest = null;
         }
