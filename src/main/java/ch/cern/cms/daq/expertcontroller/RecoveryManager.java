@@ -88,7 +88,7 @@ public class RecoveryManager {
             case "accepted":
                 request.setStatus("awaiting approval");
                 recoveryJobRepository.save(request);
-                recoverySequenceController.start(request.getProblemId());
+                recoverySequenceController.start(request);
 
                 setupRecoveryRequest(request);
                 break;
@@ -101,7 +101,7 @@ public class RecoveryManager {
                 rcmsController.interrupt();
 
                 waitingRequest = currentRequest;
-                recoverySequenceController.preempt(request.getProblemId());
+                recoverySequenceController.preempt(request);
                 setupRecoveryRequest(request);
                 break;
 
@@ -112,7 +112,7 @@ public class RecoveryManager {
 
                 getStepExecutionCount(currentRequest, request);
                 recoveryJobRepository.save(request);
-                recoverySequenceController.continueSame(request.getProblemId());
+                recoverySequenceController.continueSame(request);
 
 
                 setupRecoveryRequest(request); // pass current request
@@ -312,7 +312,7 @@ public class RecoveryManager {
                 recoveryRequestStep.setTimesExecuted(0);
             }
 
-            recoverySequenceController.accept();
+            recoverySequenceController.accept(recoveryRequestStep.getStepIndex(), recoveryRequestStep.getHumanReadable());
             recoveryJobRepository.save(request);
             dashboardController.notifyRecoveryStatus(getStatus());
 
@@ -403,7 +403,7 @@ public class RecoveryManager {
         if (waitingRequest == null) {
             currentRequest = null;
         } else {
-            recoverySequenceController.start(waitingRequest.getProblemId());
+            recoverySequenceController.start(waitingRequest);
             setupRecoveryRequest(waitingRequest);
             waitingRequest = null;
         }

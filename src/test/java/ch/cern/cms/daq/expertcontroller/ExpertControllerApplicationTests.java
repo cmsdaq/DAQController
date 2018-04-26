@@ -470,7 +470,7 @@ public class ExpertControllerApplicationTests {
 
     private String recoveryPrefix = "Recovery of";
     
-    private String executingPrefix = "Executing step";
+    private String executingPrefix = "Executing ";
     
     private String waitinMessage = "Waiting for approval";
     

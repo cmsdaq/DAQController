@@ -13,4 +13,4 @@ Corner cases
 
 Exception cases
 1. Controller is unavailable and expert sends the requests
-2.
+2. Expert crashes after recovery request has been accepted and before finish signal was sent to controller. Controller should remove it after some timeout of inactivity. Or ping expert with id.
