@@ -44,6 +44,7 @@ public class RecoveryRequest {
 
     @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @ElementCollection
+    @CollectionTable(name="recovery_request_step")
     private List<RecoveryRequestStep> recoverySteps;
 
     String problemTitle;

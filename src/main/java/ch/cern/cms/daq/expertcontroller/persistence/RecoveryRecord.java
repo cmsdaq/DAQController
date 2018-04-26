@@ -1,9 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.persistence;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -20,10 +17,15 @@ public class RecoveryRecord {
 
     String description;
 
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "start_date")
     Date start;
 
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "end_date")
     Date end;
 
+    @Transient
     LinkedHashSet<Long> relatedConditions;
 
     public String getName() {
