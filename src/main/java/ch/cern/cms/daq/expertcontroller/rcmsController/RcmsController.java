@@ -3,7 +3,9 @@ package ch.cern.cms.daq.expertcontroller.rcmsController;
 import ch.cern.cms.daq.expertcontroller.RecoveryManager;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -13,19 +15,20 @@ import java.util.Map;
 @Component("rcmsController")
 public class RcmsController {
 
+    private static Logger logger = Logger.getLogger(RcmsController.class);
 
     @Autowired
     private RecoveryManager recoveryManager;
 
-    // TODO:
-    private static final String AUTOMATOR_URI = "http://dvbu-pcintelsz.cern.ch:18080/urn:rcms-fm:fullpath=/philipp/pccms87/rcms42_port8080/lvl0FMwithAutomator,group=lvl0A,owner=philipp";
+    @Value("${rcms.uri}")
+    private String AUTOMATOR_URI;
 
     public String getSubsystemStatus(){
         return null;
     }
 
     public RcmsController(){
-
+        logger.info("RCMS controller will use following automator URI: " + AUTOMATOR_URI);
     }
 
     public void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
