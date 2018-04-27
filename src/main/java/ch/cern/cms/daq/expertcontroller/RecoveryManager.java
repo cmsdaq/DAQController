@@ -79,6 +79,7 @@ public class RecoveryManager {
         String status = acceptRecoveryRequest(request);
 
         response.setStatus(status);
+        request.setReceived(new Date());
 
 
         logger.info("Request will be " + status);

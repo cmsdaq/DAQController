@@ -10,7 +10,7 @@ import java.util.Set;
 public class RecoveryRecord {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     Long id;
 
     String name;
