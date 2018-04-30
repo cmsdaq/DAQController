@@ -12,10 +12,11 @@ import java.util.Set;
  * Part of recovery request that is sent from expert
  */
 @Entity
+@Table(name="recovery_request_step")
 public class RecoveryRequestStep {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     /**
@@ -23,9 +24,13 @@ public class RecoveryRequestStep {
      */
     int stepIndex;
 
+    @Transient
+    String humanReadable;
+
     /**
      * Subsystems to red recycle
      */
+    @CollectionTable(name="recovery_request_step_rrec",joinColumns = @JoinColumn(name="recovery_request_step_id"))
     @ElementCollection(fetch = FetchType.EAGER)
     Set<String> redRecycle;
 
@@ -33,11 +38,13 @@ public class RecoveryRequestStep {
      * Subsystems to green recycle
      */
     @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name="recovery_request_step_grec", joinColumns = @JoinColumn(name="recovery_request_step_id"))
     Set<String> greenRecycle;
 
     /**
      * Subsystems to blame
      */
+    @CollectionTable(name="recovery_request_step_fault",joinColumns = @JoinColumn(name="recovery_request_step_id"))
     @ElementCollection(fetch = FetchType.EAGER)
     Set<String> fault;
 
@@ -45,14 +52,22 @@ public class RecoveryRequestStep {
      * Subsystems to reset. Some schedules could have been planned by shifter. This will reset that actions.
      */
     @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name="recovery_request_step_reset",joinColumns = @JoinColumn(name="recovery_request_step_id"))
     Set<String> reset;
 
+    @Transient
     @JsonIgnore
     String status;
 
+    @Transient
     Date started;
 
+    @Transient
     Date finished;
+
+
+    /** How many times executed */
+    private Integer timesExecuted;
 
     public Set<String> getGreenRecycle() {
         return greenRecycle;
@@ -118,14 +133,35 @@ public class RecoveryRequestStep {
         this.stepIndex = stepIndex;
     }
 
+    public Integer getTimesExecuted() {
+        return timesExecuted;
+    }
+
+    public void setTimesExecuted(Integer timesExecuted) {
+        this.timesExecuted = timesExecuted;
+    }
+
+    public String getHumanReadable() {
+        return humanReadable;
+    }
+
+    public void setHumanReadable(String humanReadable) {
+        this.humanReadable = humanReadable;
+    }
 
     @Override
     public String toString() {
-        return "RecoveryRequest{" +
-                "redRecycle=" + redRecycle +
+        return "RecoveryRequestStep{" +
+                "id=" + id +
+                ", stepIndex=" + stepIndex +
+                ", redRecycle=" + redRecycle +
                 ", greenRecycle=" + greenRecycle +
                 ", fault=" + fault +
                 ", reset=" + reset +
+                ", status='" + status + '\'' +
+                ", started=" + started +
+                ", finished=" + finished +
+                ", timesExecuted=" + timesExecuted +
                 '}';
     }
 }

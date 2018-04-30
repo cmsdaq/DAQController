@@ -10,6 +10,10 @@ public class RecoveryStepStatus {
     String status;
     String rcmsStatus;
 
+
+    /** How many times this step was executed */
+    Integer timesExecuted;
+
     public Date getStarted() {
         return started;
     }
@@ -49,6 +53,15 @@ public class RecoveryStepStatus {
 
     public void setRcmsStatus(String rcmsStatus) {
         this.rcmsStatus = rcmsStatus;
+    }
+
+
+    public Integer getTimesExecuted() {
+        return timesExecuted;
+    }
+
+    public void setTimesExecuted(Integer timesExecuted) {
+        this.timesExecuted = timesExecuted;
     }
 
     @Override

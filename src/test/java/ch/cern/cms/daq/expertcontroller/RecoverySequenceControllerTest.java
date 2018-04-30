@@ -6,6 +6,7 @@ import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
 import ch.cern.cms.daq.expertcontroller.rcmsController.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.rcmsController.RcmsController;
+import org.h2.tools.Recover;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +43,7 @@ public class RecoverySequenceControllerTest {
         System.out.println(all);
         assertEquals(0, all.size());
 
-        recoverySequenceController.start(1L);
+        recoverySequenceController.start(genereateRecoveryRequest(1L));
         all = recoveryRecordRepository.findAll();
         System.out.println(all);
         assertEquals(2, all.size());
@@ -53,7 +54,7 @@ public class RecoverySequenceControllerTest {
         ));
 
         assertThat(all, hasItem(allOf(
-                hasProperty("name", is("Recovery of ..")),
+                hasProperty("name", startsWith("Recovery of")),
                 hasProperty("start", notNullValue()),
                 hasProperty("end", nullValue()))
         ));
@@ -65,14 +66,14 @@ public class RecoverySequenceControllerTest {
         assertEquals(2, all.size());
 
 
-        recoverySequenceController.accept();
+        recoverySequenceController.accept(1910902,"");
         all = recoveryRecordRepository.findAll();
         System.out.println(all);
         assertEquals(3, all.size());
         assertThat(all, contains(
-                hasProperty("name", is("Recovery of ..")),
+                hasProperty("name", startsWith("Recovery of")),
                 hasProperty("name", is("Waiting for approval")),
-                hasProperty("name", is("Executing step .."))
+                hasProperty("name", startsWith("Executing "))
         ));
         assertThat(all, hasItem(allOf(
                 hasProperty("name", is("Waiting for approval")),
@@ -85,14 +86,14 @@ public class RecoverySequenceControllerTest {
         System.out.println(all);
         assertEquals(4, all.size());
         assertThat(all, contains(
-                hasProperty("name", is("Recovery of ..")),
+                hasProperty("name", startsWith("Recovery of")),
                 hasProperty("name", is("Waiting for approval")),
-                hasProperty("name", is("Executing step ..")),
-                hasProperty("name", is("Observing .."))
+                hasProperty("name", startsWith("Executing ")),
+                hasProperty("name", startsWith("Observing"))
         ));
 
         assertThat(all, hasItem(allOf(
-                hasProperty("name", is("Executing step ..")),
+                hasProperty("name", startsWith("Executing ")),
                 hasProperty("start", notNullValue()),
                 hasProperty("end", notNullValue()))
         ));
@@ -104,13 +105,13 @@ public class RecoverySequenceControllerTest {
         assertEquals(4, all.size());
 
         assertThat(all, contains(
-                hasProperty("name", is("Recovery of ..")),
+                hasProperty("name", startsWith("Recovery of")),
                 hasProperty("name", is("Waiting for approval")),
-                hasProperty("name", is("Executing step ..")),
-                hasProperty("name", is("Observing .."))
+                hasProperty("name", startsWith("Executing ")),
+                hasProperty("name", startsWith("Observing"))
         ));
         assertThat(all, hasItem(allOf(
-                hasProperty("name", is("Recovery of ..")),
+                hasProperty("name", startsWith("Recovery of")),
                 hasProperty("start", notNullValue()),
                 hasProperty("end", notNullValue()))
         ));
@@ -119,6 +120,14 @@ public class RecoverySequenceControllerTest {
         end = new Date();
         all = recoveryRecordRepository.findBetween(start, end);
         assertEquals(4, all.size());
+
+    }
+
+    private RecoveryRequest genereateRecoveryRequest(Long id){
+
+        RecoveryRequest rr = new RecoveryRequest();
+        rr.setProblemId(id);
+        return rr;
 
     }
 

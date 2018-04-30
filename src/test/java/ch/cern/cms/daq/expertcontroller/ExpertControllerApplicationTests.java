@@ -41,6 +41,7 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.post;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
 
@@ -146,8 +147,139 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", start)
                 .param("end", end).get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", hasItem("Recovery of .."))
-                .body("name", hasItem("Waiting for approval"));
+                .body("name", hasItem(startsWith(recoveryPrefix)))
+                .body("name", hasItem(is(waitinMessage)));
+
+        Thread.sleep(2000);
+    }
+
+    /**
+     * Tests the behaviour when experts sends 'finished' signal
+     */
+    @Test
+    public void finishedConditionCase() throws InterruptedException {
+
+
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.YEAR, 2);
+        String end = DatatypeConverter.printDateTime(cal);
+        cal.add(Calendar.YEAR, -1);
+        String start = DatatypeConverter.printDateTime(cal);
+
+        RecoveryRequest r = generateRecoveryRequest(10L);
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "status", equalTo("accepted"),
+                        "recoveryId", equalTo(1));
+
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", hasItem(startsWith(recoveryPrefix)))
+                .body("name", hasItem(is(waitinMessage)));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10),
+                        "status", equalTo("awaiting approval"));
+
+        given().header(jsonHeader).body(10L).post("/finished").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10),
+                        "status", equalTo("finished"));
+
+
+
+        Thread.sleep(2000);
+    }
+
+    /**
+     * Tests the behaviour when experts sends 'finished' signal after having request accepted
+     */
+    @Test
+    public void finishedAfterManyConditionsCase() throws InterruptedException {
+
+
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.YEAR, 1);
+        String end = DatatypeConverter.printDateTime(cal);
+        cal.add(Calendar.YEAR, -2);
+        String start = DatatypeConverter.printDateTime(cal);
+
+
+        RecoveryRequest r = generateRecoveryRequest(10L);
+
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "status", equalTo("accepted"),
+                        "recoveryId", equalTo(1));
+
+
+        Thread.sleep(3000);
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage)));
+
+
+        /* Approve current request */
+        ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
+        stompSession.send(SEND_APPROVE, approvalResponse);
+
+        Thread.sleep(1000);
+
+        // TODO: here for some reason waiting message is not present
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)));
+
+
+        // wait until job finishes and observe period starts
+        Thread.sleep(5000);
+
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)));
+
+        RecoveryRequest r2 = generateRecoveryRequest(11L);
+        r2.setSameProblem(true);
+
+        given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "status", equalTo("acceptedToContinue"),
+                        "recoveryId", equalTo(2));
+
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage),is(waitinMessage)));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10, 11),
+                        "status", equalTo("acceptedToContinue"));
+
+        given().header(jsonHeader).body(11L).post("/finished").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10,11),
+                        "status", equalTo("finished"));
+
+
 
         Thread.sleep(2000);
     }
@@ -194,7 +326,7 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval"));
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage)));
 
 
         /* Approve current request */
@@ -207,7 +339,7 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Executing step .."));
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)));
 
         /* Check current status*/
         given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
@@ -216,7 +348,8 @@ public class ExpertControllerApplicationTests {
                         //TODO:"status", equalTo("awaiting approval"),
                         "automatedSteps.find { it.stepIndex == 0 }.status", equalTo("recovering"),
                         "automatedSteps.find { it.stepIndex == 0 }.started", notNullValue(),
-                        "automatedSteps.find { it.stepIndex == 0 }.finished", nullValue());
+                        "automatedSteps.find { it.stepIndex == 0 }.finished", nullValue(),
+                        "automatedSteps.find { it.stepIndex == 0 }.timesExecuted", is(0));
 
 
         // The second one is not accepted, the other is being processed
@@ -238,12 +371,13 @@ public class ExpertControllerApplicationTests {
                         "conditionIds", contains(10),
                         "automatedSteps.find { it.stepIndex == 0 }.status", equalTo("finished"),
                         "automatedSteps.find { it.stepIndex == 0 }.started", notNullValue(),
-                        "automatedSteps.find { it.stepIndex == 0 }.finished", notNullValue());
+                        "automatedSteps.find { it.stepIndex == 0 }.finished", notNullValue(),
+                        "automatedSteps.find { it.stepIndex == 0 }.timesExecuted", is(1));
 
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Executing step ..", "Observing .."));
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)));
     }
 
     @Test
@@ -311,7 +445,7 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Recovery of ..", "Waiting for approval"));
+                .body("name", contains(startsWith(recoveryPrefix), is(is(waitinMessage)), startsWith(recoveryPrefix), is(is(waitinMessage))));
 
         ApprovalResponse approvalResponse = generateApprovalResponse(3L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
@@ -322,7 +456,7 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Recovery of ..", "Waiting for approval", "Executing step .."))
+                .body("name", contains(startsWith("Recovery of"), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)))
                 .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), nullValue()));
 
         Thread.sleep(5000); // after 5 seconds the job will finish
@@ -330,16 +464,16 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Recovery of ..", "Waiting for approval", "Executing step ..", "Observing .."))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)))
                 .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), notNullValue(), nullValue()));
 
-        Thread.sleep(10000); // after 10 seconds the observing will finish
+        Thread.sleep(RecoverySequenceController.observePeriod); // after 15 seconds the observingMessage will finish
 
         /* 1st recoveyr request will be preempted by 2nd request, after it's finished, 1st will be picked up again as it was not finished */
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Recovery of ..", "Waiting for approval", "Executing step ..", "Observing ..", "Recovery of ..", "Waiting for approval"))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), startsWith(recoveryPrefix), is(waitinMessage)))
                 .body("end", contains(notNullValue(), notNullValue(), notNullValue(), notNullValue(), notNullValue(), notNullValue(), nullValue(), nullValue()));
     }
 
@@ -381,7 +515,7 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Executing step ..", "Observing .."))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)))
                 .body("end", contains(nullValue(), notNullValue(), notNullValue(), nullValue()));
 
         r2.setSameProblem(true);
@@ -395,7 +529,7 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Executing step ..", "Observing ..", "Waiting for approval"))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage)))
                 .body("end", contains(nullValue(), notNullValue(), notNullValue(), notNullValue(), nullValue()));
 
 
@@ -408,7 +542,7 @@ public class ExpertControllerApplicationTests {
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains("Recovery of ..", "Waiting for approval", "Executing step ..", "Observing ..", "Waiting for approval", "Executing step .."))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage), startsWith(executingPrefix)))
                 .body("end", contains(nullValue(), notNullValue(), notNullValue(), notNullValue(), notNullValue(), nullValue()));
 
 
@@ -464,6 +598,14 @@ public class ExpertControllerApplicationTests {
             }
         }
     }
+
+    private String recoveryPrefix = "Recovery of";
+    
+    private String executingPrefix = "Executing ";
+    
+    private String waitinMessage = "Waiting for approval";
+    
+    private String observingMessage = "Observing ..";
 
 
 }

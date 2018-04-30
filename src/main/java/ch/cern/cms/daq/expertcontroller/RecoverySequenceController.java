@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller;
 
+import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
 import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
@@ -29,7 +30,10 @@ public class RecoverySequenceController {
     @Autowired
     private RecoveryManager recoveryManager;
 
-    private final static int observePeriod = 10000;
+    /**
+     * Period of time to observe system in order to decide if recovery should be continued of finished
+     */
+    public final static int observePeriod = 20000;
 
     private final static Logger logger = Logger.getLogger(RecoverySequenceController.class);
 
@@ -49,14 +53,18 @@ public class RecoverySequenceController {
     private RecoveryRecord mainRecord;
     private RecoveryRecord current;
 
-    public void start(Long conditionId) {
+    public void start(RecoveryRequest recoveryRequest) {
 
         currentStatus = RecoveryStatus.AwaitingApproval;
 
-        startRecoveryRecords("Waiting for approval", conditionId);
+        startRecoveryRecords("Waiting for approval", recoveryRequest.getProblemId(), recoveryRequest.getProblemTitle());
     }
 
-    public void preempt(Long conditionId) {
+    public void preempt(RecoveryRequest recoveryRequest) {
+
+        if(recoveryRequest.getProblemId() == null){
+            throw new IllegalArgumentException("Cannot process recovery request without problem id");
+        }
 
         currentStatus = RecoveryStatus.AwaitingApproval;
 
@@ -64,17 +72,21 @@ public class RecoverySequenceController {
         finishRecoveryRecords();
 
         /* Than start new recovery records */
-        startRecoveryRecords("Waiting for approval", conditionId);
+        startRecoveryRecords("Waiting for approval", recoveryRequest.getProblemId(), recoveryRequest.getProblemTitle());
 
     }
 
 
 
-    public void continueSame(Long conditionId){
+    public void continueSame(RecoveryRequest recoveryRequest){
+
+        if(recoveryRequest.getProblemId() == null){
+            throw new IllegalArgumentException("Cannot process recovery request without problem id");
+        }
 
         currentStatus = RecoveryStatus.AwaitingApproval;
 
-        finishAndStartNewCurrent("Waiting for approval",conditionId);
+        finishAndStartNewCurrent("Waiting for approval",recoveryRequest.getProblemId(), "Waiting for operator approval");
     }
 
 
@@ -86,10 +98,21 @@ public class RecoverySequenceController {
 
     }
 
-    public void accept() {
+    public void accept(int stepIndex, String stepDescription) {
 
         currentStatus = RecoveryStatus.RecoveryStep;
-        finishAndStartNewCurrent("Executing step ..");
+        String suffix;
+        int humanReadableStepIndex = stepIndex + 1;
+        if(humanReadableStepIndex == 1){
+            suffix = "st";
+        } else if (humanReadableStepIndex == 2){
+            suffix = "nd";
+        }else if (humanReadableStepIndex == 3){
+            suffix = "rd";
+        }  else {
+            suffix = "th";
+        }
+        finishAndStartNewCurrent("Executing " + humanReadableStepIndex + suffix + " step", null, stepDescription);
 
     }
 
@@ -97,7 +120,7 @@ public class RecoverySequenceController {
 
         currentStatus = RecoveryStatus.Observe;
 
-        finishAndStartNewCurrent("Observing ..");
+        finishAndStartNewCurrent("Observing ..", null, "Observing system for for response " + observePeriod + " ms");
 
         final RecoverySequenceController controller = this;
 
@@ -135,14 +158,15 @@ public class RecoverySequenceController {
 
 
 
-    private void startRecoveryRecords(String currentTitle, Long conditionId){
+    private void startRecoveryRecords(String currentTitle, Long problemId, String problemTitle){
+
         Date requestReceivedDate = new Date();
         mainRecord = new RecoveryRecord();
         current = new RecoveryRecord();
         mainRecord.setStart(requestReceivedDate);
-        mainRecord.setName("Recovery of ..");
+        mainRecord.setName("Recovery of " + problemTitle);
         mainRecord.setRelatedConditions(new LinkedHashSet<>());
-        mainRecord.getRelatedConditions().add(conditionId);
+        mainRecord.getRelatedConditions().add(problemId);
 
         current.setStart(requestReceivedDate);
         current.setName(currentTitle);
@@ -150,16 +174,13 @@ public class RecoverySequenceController {
         recoveryRecordRepository.save(current);
     }
 
-    private void finishAndStartNewCurrent(String currentTitle, Long conditionId){
+    private void finishAndStartNewCurrent(String currentTitle, Long newConditionId, String currentDescription){
 
-        mainRecord.getRelatedConditions().add(conditionId);
-        finishAndStartNewCurrent(currentTitle);
-    }
-
-    private void finishAndStartNewCurrent(String currentTitle){
+        if(newConditionId != null) {
+            mainRecord.getRelatedConditions().add(newConditionId);
+        }
 
         Date requestReceivedDate = new Date();
-
 
         current.setEnd(requestReceivedDate);
         recoveryRecordRepository.save(current);
@@ -168,7 +189,10 @@ public class RecoverySequenceController {
 
         current.setStart(requestReceivedDate);
         current.setName(currentTitle);
+        current.setDescription(currentDescription);
         recoveryRecordRepository.save(current);
     }
+
+
 }
 

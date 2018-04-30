@@ -10,3 +10,7 @@ Corner cases
 3. Recovery interrupted
 4. Less important condition emerges while pervious is in observe period - results in postponement
 5. More important preempts one, than disappears quiclky and less important will be back to accept
+
+Exception cases
+1. Controller is unavailable and expert sends the requests
+2. Expert crashes after recovery request has been accepted and before finish signal was sent to controller. Controller should remove it after some timeout of inactivity. Or ping expert with id.

@@ -8,6 +8,7 @@ import ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatus;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,9 @@ public class ExpertController {
 
     @Autowired
     RecoveryRecordRepository recoveryRecordRepository;
+
+    @Value("${controller.message}")
+    private String message;
 
     @RequestMapping(value = "/recover", method = RequestMethod.POST)
     public ResponseEntity<RecoveryResponse> greeting(@RequestBody RecoveryRequest request) {
@@ -86,18 +90,18 @@ public class ExpertController {
         return status;
     }
 
-    @CrossOrigin(origins = "http://localhost:8080")
+    @CrossOrigin(origins = "*")
     @RequestMapping(value = "/records")
     public Collection<RecoveryRecord> getRecoveryRecords(@RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start, @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
-        logger.debug("Requested records between: " + start + " and  " + end);
+        logger.info("Requested records between: " + start + " and  " + end);
         List<RecoveryRecord> result = recoveryRecordRepository.findBetween(Date.from(start.toInstant()), Date.from(end.toInstant()));
         logger.debug("Result: " + result);
         return result;
     }
 
     @RequestMapping(value = "/", method = RequestMethod.GET)
-    public String deleteme() {
-        return "Hello world";
+    public String main() {
+        return "Controller up and running: " + message;
     }
 
 }

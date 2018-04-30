@@ -1,6 +1,7 @@
 package ch.cern.cms.daq.expertcontroller.websocket;
 
 import java.util.List;
+import java.util.Date;
 
 public class RecoveryStatus {
 
@@ -11,6 +12,12 @@ public class RecoveryStatus {
     String status;
 
     List<RecoveryStepStatus> automatedSteps;
+
+    /** Date when recovery was started */
+    Date startDate;
+
+    /** Date when recovery was finished */
+    Date endDate;
 
 
     public String getStatus() {
@@ -45,6 +52,23 @@ public class RecoveryStatus {
         this.conditionIds = conditionIds;
     }
 
+    public Date getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(Date startDate) {
+        this.startDate = startDate;
+    }
+
+    public Date getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(Date endDate) {
+        this.endDate = endDate;
+    }
+
+
     @Override
     public String toString() {
         return "RecoveryStatus{" +
@@ -52,6 +76,8 @@ public class RecoveryStatus {
                 ", conditionIds=" + conditionIds +
                 ", status='" + status + '\'' +
                 ", automatedSteps=" + automatedSteps +
+                ", startDate=" + startDate +
+                ", endDate=" + endDate +
                 '}';
     }
 }
