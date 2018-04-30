@@ -79,6 +79,7 @@ public class RecoveryManager {
         String status = acceptRecoveryRequest(request);
 
         response.setStatus(status);
+        request.setReceived(new Date());
 
 
         logger.info("Request will be " + status);
@@ -413,7 +414,11 @@ public class RecoveryManager {
 
     public void finished(Long id) {
 
-        if (currentRequest != null && currentRequest.getProblemId() == id) {
+        if(recoverySequenceController.getMainRecord() != null
+                && recoverySequenceController.getMainRecord().getRelatedConditions() != null
+                && recoverySequenceController.getMainRecord().getRelatedConditions().contains(id)){
+
+        //if (currentRequest != null && currentRequest.getProblemId() == id) {
             if (RecoveryStatus.AwaitingApproval == recoverySequenceController.getCurrentStatus()) {
                 recoverySequenceController.end();
             } else {

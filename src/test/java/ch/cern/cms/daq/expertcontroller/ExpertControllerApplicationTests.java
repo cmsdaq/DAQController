@@ -153,6 +153,137 @@ public class ExpertControllerApplicationTests {
         Thread.sleep(2000);
     }
 
+    /**
+     * Tests the behaviour when experts sends 'finished' signal
+     */
+    @Test
+    public void finishedConditionCase() throws InterruptedException {
+
+
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.YEAR, 2);
+        String end = DatatypeConverter.printDateTime(cal);
+        cal.add(Calendar.YEAR, -1);
+        String start = DatatypeConverter.printDateTime(cal);
+
+        RecoveryRequest r = generateRecoveryRequest(10L);
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "status", equalTo("accepted"),
+                        "recoveryId", equalTo(1));
+
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", hasItem(startsWith(recoveryPrefix)))
+                .body("name", hasItem(is(waitinMessage)));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10),
+                        "status", equalTo("awaiting approval"));
+
+        given().header(jsonHeader).body(10L).post("/finished").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10),
+                        "status", equalTo("finished"));
+
+
+
+        Thread.sleep(2000);
+    }
+
+    /**
+     * Tests the behaviour when experts sends 'finished' signal after having request accepted
+     */
+    @Test
+    public void finishedAfterManyConditionsCase() throws InterruptedException {
+
+
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.YEAR, 1);
+        String end = DatatypeConverter.printDateTime(cal);
+        cal.add(Calendar.YEAR, -2);
+        String start = DatatypeConverter.printDateTime(cal);
+
+
+        RecoveryRequest r = generateRecoveryRequest(10L);
+
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "status", equalTo("accepted"),
+                        "recoveryId", equalTo(1));
+
+
+        Thread.sleep(3000);
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage)));
+
+
+        /* Approve current request */
+        ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
+        stompSession.send(SEND_APPROVE, approvalResponse);
+
+        Thread.sleep(1000);
+
+        // TODO: here for some reason waiting message is not present
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)));
+
+
+        // wait until job finishes and observe period starts
+        Thread.sleep(5000);
+
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)));
+
+        RecoveryRequest r2 = generateRecoveryRequest(11L);
+        r2.setSameProblem(true);
+
+        given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "status", equalTo("acceptedToContinue"),
+                        "recoveryId", equalTo(2));
+
+        given().queryParam("start", start)
+                .param("end", end).get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage),is(waitinMessage)));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10, 11),
+                        "status", equalTo("acceptedToContinue"));
+
+        given().header(jsonHeader).body(11L).post("/finished").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()));
+
+
+        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "conditionIds", contains(10,11),
+                        "status", equalTo("finished"));
+
+
+
+        Thread.sleep(2000);
+    }
+
     private RecoveryRequest generateRecoveryRequest(Long problemId) {
         RecoveryRequest r = new RecoveryRequest();
         r.setProblemId(problemId);

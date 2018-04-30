@@ -4,6 +4,7 @@ package ch.cern.cms.daq.expertcontroller.api;
 
 import javax.persistence.*;
 import java.util.List;
+import java.util.Date;
 
 /**
  * Request from expert
@@ -12,7 +13,7 @@ import java.util.List;
 public class RecoveryRequest {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     /**
@@ -43,7 +44,7 @@ public class RecoveryRequest {
     private boolean withPostponement;
 
     @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @ElementCollection
+    @JoinColumn(name="recovery_request_id")
     private List<RecoveryRequestStep> recoverySteps;
 
     String problemTitle;
@@ -52,6 +53,11 @@ public class RecoveryRequest {
      * Description of the problem that will be recovered
      */
     String problemDescription;
+
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "received")
+    Date received;
 
     public String getProblemDescription() {
         return problemDescription;
@@ -125,6 +131,14 @@ public class RecoveryRequest {
 
     public void setProblemTitle(String problemTitle) {
         this.problemTitle = problemTitle;
+    }
+
+    public Date getReceived() {
+        return received;
+    }
+
+    public void setReceived(Date received) {
+        this.received = received;
     }
 
     @Override
