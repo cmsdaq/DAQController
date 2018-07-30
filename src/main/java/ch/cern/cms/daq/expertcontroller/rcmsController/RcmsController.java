@@ -23,19 +23,32 @@ public class RcmsController {
     @Value("${rcms.uri}")
     private String AUTOMATOR_URI;
 
+    @Value("${l0.uri}")
+    private String L0_URI;
+
     public String getSubsystemStatus(){
         return null;
     }
 
+    private static final String senderURI = "lv0a-controller.local";
+
+
     public RcmsController(){
         logger.info("RCMS controller will use following automator URI: " + AUTOMATOR_URI);
+        logger.info("RCMS controller will use following levelzero URI: " + L0_URI);
+    }
+
+    public void sendTTCHardReset() throws  LV0AutomatorControlException{
+        L0Controller controller = new L0Controller(senderURI);
+        controller.addURI(L0_URI);
+        controller.sendTTCHardReset();
     }
 
     public void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
 
-        LV0AutomatorController controller = new LV0AutomatorController("lv0a-controller.local");
+        LV0AutomatorController controller = new LV0AutomatorController(senderURI);
 
-        controller.addAutomatorURI(AUTOMATOR_URI);
+        controller.addURI(AUTOMATOR_URI);
 
         controller.interruptRecovery();
 
@@ -85,7 +98,7 @@ public class RcmsController {
         LV0AutomatorController controller = null;
         try {
             controller = new LV0AutomatorController("lv0a-controller.local");
-            controller.addAutomatorURI(AUTOMATOR_URI);
+            controller.addURI(AUTOMATOR_URI);
             return controller.isRecoveryOngoing();
         } catch (LV0AutomatorControlException e) {
             e.printStackTrace();
@@ -98,7 +111,7 @@ public class RcmsController {
         LV0AutomatorController controller = null;
         try {
             controller = new LV0AutomatorController("lv0a-controller.local");
-            controller.addAutomatorURI(AUTOMATOR_URI);
+            controller.addURI(AUTOMATOR_URI);
             controller.interruptRecovery();
         } catch (LV0AutomatorControlException e){
             e.printStackTrace();

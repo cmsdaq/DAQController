@@ -20,56 +20,15 @@ import java.util.Map;
  * Makes use of the RCMS framework's ParameterRelayRemote class.
  */
 @SuppressWarnings("rawtypes")
-public class LV0AutomatorController {
+public class LV0AutomatorController extends FMController {
 
 	public static final String SUBSYSTEM_SCHEDULE_RECYCLE = "Recycle";
 	public static final String SUBSYSTEM_SCHEDULE_RECONFIGURE = "Reconfigure";
 	public static final String SUBSYSTEM_SCHEDULE_NONE = "None";
 
-	private ParameterRelayRemote parameterRelay;
 
-	private List<String> URIList = new ArrayList<String>();
-	private String[] URIs = null;
-
-	private final String senderURI;
-
-	/**
-	 * Constructs a new controller.
-	 * 
-	 * @param senderURI
-	 *            The URI that is to be used as sender URI in requests to the
-	 *            LV0A.
-	 * @throws LV0AutomatorControlException
-	 *             If the parameter relay could not be created.
-	 */
-	public LV0AutomatorController(String senderURI) throws LV0AutomatorControlException {
-		this.senderURI = senderURI;
-
-		try {
-			this.parameterRelay = new ParameterRelayRemote();
-		} catch (ParameterServiceException psEx) {
-			throw new LV0AutomatorControlException("Exception creating parameter relay.", psEx);
-		}
-	}
-
-	/**
-	 * Adds an URI to the controller, making it receive commands issued using
-	 * the controller.
-	 * 
-	 * @param URI
-	 *            the URI of the LV0A instance.
-	 */
-	public void addAutomatorURI(String URI) {
-		this.URIList.add(URI);
-		this.URIs = this.URIList.toArray(new String[this.URIList.size()]);
-	}
-
-	private static FunctionManagerParameterBean mapToBean(Map<String, ?> map) {
-		MapT<ParameterType<?>> mapT = MapT.createFromMap(map);
-		FunctionManagerParameter<ParameterType> parameter = new FunctionManagerParameter<ParameterType>("GUI_COMMAND",
-				mapT);
-
-		return ParameterUtil.transform(parameter);
+	public LV0AutomatorController(String senderURI) throws LV0AutomatorControlException{
+		super(senderURI);
 	}
 
 	private static FunctionManagerParameterBean buildStartRecoveryBean() {
@@ -113,6 +72,7 @@ public class LV0AutomatorController {
 	public void startRun() throws LV0AutomatorControlException {
 		try {
 			this.parameterRelay.setParameter(this.URIs, startRunBean, this.senderURI);
+
 		} catch (ParameterServiceException psEx) {
 			throw new LV0AutomatorControlException("Exception setting parameter.", psEx);
 		}
@@ -233,8 +193,7 @@ public class LV0AutomatorController {
 
 	/**
 	 * Sets the schedule of multiple subsystems.
-	 * 
-	 * @param schedules
+	 *
 	 *            A mapping of the format <code>subsystemName => schedule</code>
 	 *            describing the schedule to be set.
 	 * @throws LV0AutomatorControlException
