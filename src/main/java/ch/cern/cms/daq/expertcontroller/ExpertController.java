@@ -95,6 +95,10 @@ public class ExpertController {
     public Collection<RecoveryRecord> getRecoveryRecords(@RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start, @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
         logger.info("Requested records between: " + start + " and  " + end);
         List<RecoveryRecord> result = recoveryRecordRepository.findBetween(Date.from(start.toInstant()), Date.from(end.toInstant()));
+
+
+        result.stream().forEach(r->r.calculateDuration());
+
         logger.debug("Result: " + result);
         return result;
     }

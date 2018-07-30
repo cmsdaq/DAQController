@@ -28,6 +28,9 @@ public class RecoveryRecord {
     @Transient
     LinkedHashSet<Long> relatedConditions;
 
+    @Transient
+    Long duration;
+
     public String getName() {
         return name;
     }
@@ -72,6 +75,14 @@ public class RecoveryRecord {
         this.relatedConditions = relatedConditions;
     }
 
+    public Long getDuration() {
+        return duration;
+    }
+
+    public void setDuration(Long duration) {
+        this.duration = duration;
+    }
+
     @Override
     public String toString() {
         return "RecoveryRecord{" +
@@ -81,5 +92,11 @@ public class RecoveryRecord {
                 ", start=" + start +
                 ", end=" + end +
                 '}';
+    }
+
+    public void calculateDuration() {
+        if(end != null && start != null){
+            this.duration = end.getTime() - start.getTime();
+        }
     }
 }
