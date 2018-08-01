@@ -2,9 +2,7 @@ package ch.cern.cms.daq.expertcontroller;
 
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.websocket.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.websocket.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
 import org.apache.log4j.Logger;
@@ -14,15 +12,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.support.SpringBootServletInitializer;
-import org.springframework.context.annotation.Bean;
 
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.HashSet;
 
+/**
+ * This is to configure the application for the usage in webapplication servlet - tomcat.
+ */
 @SpringBootApplication
-public class Application extends SpringBootServletInitializer {
+public class ExpertControllerServletApplication extends SpringBootServletInitializer {
 
     @Autowired
     ExpertController expertController;
@@ -30,15 +28,15 @@ public class Application extends SpringBootServletInitializer {
     @Autowired
     DashboardController dashboardController;
 
-    private static Logger logger = Logger.getLogger(Application.class);
+    private static Logger logger = Logger.getLogger(ExpertControllerServletApplication.class);
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-        return application.sources(Application.class).properties("spring.config.name: controller");
+        return application.sources(ExpertControllerServletApplication.class).properties("spring.config.name: controller");
     }
 
     public static void main(String[] args) throws Exception {
-        SpringApplication.run(Application.class, args);
+        SpringApplication.run(ExpertControllerServletApplication.class, args);
     }
 
 
