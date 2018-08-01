@@ -25,7 +25,7 @@ import java.util.HashSet;
  * This is to configure the application for the usage in webapplication servlet - tomcat.
  */
 @SpringBootApplication
-public class Application extends SpringBootServletInitializer {
+public class ExpertControllerServletApplication extends SpringBootServletInitializer {
 
     @Autowired
     ExpertController expertController;
@@ -33,15 +33,15 @@ public class Application extends SpringBootServletInitializer {
     @Autowired
     DashboardController dashboardController;
 
-    private static Logger logger = Logger.getLogger(Application.class);
+    private static Logger logger = Logger.getLogger(ExpertControllerServletApplication.class);
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-        return application.sources(Application.class).properties("spring.config.name: controller");
+        return application.sources(ExpertControllerServletApplication.class).properties("spring.config.name: controller");
     }
 
     public static void main(String[] args) throws Exception {
-        SpringApplication.run(Application.class, args);
+        SpringApplication.run(ExpertControllerServletApplication.class, args);
     }
 
 

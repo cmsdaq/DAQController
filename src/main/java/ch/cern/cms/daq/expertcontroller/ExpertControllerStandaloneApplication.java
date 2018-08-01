@@ -16,10 +16,10 @@ import java.util.Date;
  * This is an application configuration to run as a standalone mode (packaging jar)
  */
 //@SpringBootApplication
-public class ExpertControllerApplication {
+public class ExpertControllerStandaloneApplication {
 
 	public static void main2(String[] args) {
-		SpringApplication.run(ExpertControllerApplication.class, args);
+		SpringApplication.run(ExpertControllerStandaloneApplication.class, args);
 
 
 	}
