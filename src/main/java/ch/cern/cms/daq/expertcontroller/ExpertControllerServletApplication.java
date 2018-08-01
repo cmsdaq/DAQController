@@ -2,9 +2,7 @@ package ch.cern.cms.daq.expertcontroller;
 
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.websocket.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.websocket.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
 import org.apache.log4j.Logger;
@@ -14,11 +12,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.support.SpringBootServletInitializer;
-import org.springframework.context.annotation.Bean;
 
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.HashSet;
 
 /**
