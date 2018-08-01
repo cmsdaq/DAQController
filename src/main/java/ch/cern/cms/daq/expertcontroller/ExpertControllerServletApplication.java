@@ -3,6 +3,7 @@ package ch.cern.cms.daq.expertcontroller;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
+import ch.cern.cms.daq.expertcontroller.rcmsController.RcmsController;
 import ch.cern.cms.daq.expertcontroller.websocket.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
 import org.apache.log4j.Logger;
@@ -12,6 +13,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.support.SpringBootServletInitializer;
+import org.springframework.context.annotation.Bean;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,6 +41,18 @@ public class ExpertControllerServletApplication extends SpringBootServletInitial
         SpringApplication.run(ExpertControllerServletApplication.class, args);
     }
 
+    @Bean
+    CommandLineRunner init(RcmsController controller) {
+        return (evt) -> {
+
+
+            System.out.println("Sending ttchard reset");
+            controller.sendTTCHardReset();
+            System.out.println("Sending ttchard reset");
+
+
+        };
+    }
 
     CommandLineRunner init(RecoveryRecordRepository repo) {
         return (evt) -> {
