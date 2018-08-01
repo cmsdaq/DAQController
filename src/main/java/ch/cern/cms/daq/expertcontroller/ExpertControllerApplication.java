@@ -12,7 +12,10 @@ import org.springframework.context.annotation.Bean;
 import java.util.Calendar;
 import java.util.Date;
 
-@SpringBootApplication
+/**
+ * This is an application configuration to run as a standalone mode (packaging jar)
+ */
+//@SpringBootApplication
 public class ExpertControllerApplication {
 
 	public static void main2(String[] args) {

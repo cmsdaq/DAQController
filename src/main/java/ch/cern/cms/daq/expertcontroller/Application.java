@@ -21,6 +21,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
 
+/**
+ * This is to configure the application for the usage in webapplication servlet - tomcat.
+ */
 @SpringBootApplication
 public class Application extends SpringBootServletInitializer {
 
