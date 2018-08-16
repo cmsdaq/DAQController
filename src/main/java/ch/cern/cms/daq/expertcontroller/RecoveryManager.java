@@ -16,10 +16,7 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.stream.Collectors;
 
@@ -81,6 +78,8 @@ public class RecoveryManager {
      */
     public RecoveryResponse submitRecoveryRequest(RecoveryRequest request) {
 
+        logger.info("New request has been submitted " + request.getProblemId() + " ("+request.getProblemTitle()+")");
+
         RecoveryResponse response = new RecoveryResponse();
         String status = acceptRecoveryRequest(request);
 
@@ -89,11 +88,13 @@ public class RecoveryManager {
 
         ongoingProblems.add(request.getProblemId());
 
-        logger.info("Request will be " + status);
+
+        logger.info("Request "+request.getProblemId()+" ("+request.getProblemTitle()+") will be " + status);
 
         //TODO: we don't want strings here, replace it with enums
         switch (status) {
             case "accepted":
+                logger.info("Accepted recovery of problem " + request.getProblemId());
                 request.setStatus("awaiting approval");
                 recoveryJobRepository.save(request);
                 recoverySequenceController.start(request);
@@ -101,6 +102,8 @@ public class RecoveryManager {
                 setupRecoveryRequest(request);
                 break;
             case "acceptedWithPreemption":
+                logger.info("Accepted with preemption recovery of problem "+request.getProblemId()+". Registering " + currentRequest.getProblemId() + " as preempted by it.");
+                preemptedProblems.add(currentRequest.getProblemId());
                 currentRequest.setStatus("preempted");
                 request.setStatus("awaiting approval");
                 recoveryJobRepository.save(currentRequest);
@@ -115,6 +118,7 @@ public class RecoveryManager {
 
             case "acceptedToContinue":
 
+                logger.info("Accepted to continue recovery of problem " + request.getProblemId());
                 request.setStatus("acceptedToContinue");
                 response.setContinuesTheConditionId(currentRequest.getProblemId());
 
@@ -127,12 +131,14 @@ public class RecoveryManager {
                 break;
             case "acceptedToPostpone":
 
+                logger.info("Accepted to postpone recovery of problem " + request.getProblemId());
                 request.setStatus("acceptedToPostpone");
                 recoveryJobRepository.save(request);
                 waitingRequest = request;
 
                 break;
             case "rejected":
+                logger.info("Rejected recovery of problem " + request.getProblemId());
                 request.setStatus("rejected");
                 recoveryJobRepository.save(request);
                 response.setRejectedDueToConditionId(currentRequest.getProblemId());
@@ -161,6 +167,8 @@ public class RecoveryManager {
         String result;
         /* Exists some recovery */
         if (currentRequest != null) {
+
+            logger.info("There is currently executed request: " + currentRequest.getProblemId() + "("+currentRequest.getProblemTitle()+")");
 
             /* Preemption */
             if (request.isWithInterrupt()) {
@@ -206,6 +214,7 @@ public class RecoveryManager {
      */
     private void setupRecoveryRequest(RecoveryRequest request) {
 
+        logger.info("Recovery setup, current recovery is now " + request.getProblemId() + " ("+request.getProblemTitle()+")");
         currentRequest = request;
         Long id = recoverySequenceController.getMainRecord().getId();
 
@@ -243,13 +252,15 @@ public class RecoveryManager {
 
             response.setStatus(status);
 
-            logger.info("Getting related conditions for record: " + recoveryRecord.getName());
+            logger.debug("Getting related conditions for record: " + recoveryRecord.getName());
             response.setConditionIds(recoveryRecord.getRelatedConditions().stream().collect(Collectors.toList()));
 
             for (RecoveryRequestStep recoveryRequestStep : recoverySteps) {
                 RecoveryStepStatus stepStatus = new RecoveryStepStatus();
                 stepStatus.setStarted(recoveryRequestStep.getStarted());
                 stepStatus.setFinished(recoveryRequestStep.getFinished());
+
+                // TODO: in case TTCHardReset was not accepted indicate this here
                 stepStatus.setRcmsStatus(recoveryRequestStep.getStatus());
                 stepStatus.setTimesExecuted(recoveryRequestStep.getTimesExecuted());
                 if (recoveryRequestStep.getFinished() != null) {
@@ -265,7 +276,7 @@ public class RecoveryManager {
                 response.getAutomatedSteps().add(stepStatus);
             }
 
-            logger.info("The recovery request with id " + recoveryRecord.getId() + " has status: " + response);
+            logger.debug("The recovery request with id " + recoveryRecord.getId() + " has status: " + response);
             return response;
 
         } else {
@@ -314,7 +325,7 @@ public class RecoveryManager {
         if (currentRequest != null && recoverySequenceController.getMainRecord().getId() == id) {
 
             logger.info("Request " + id + " will be executed");
-            RecoveryRequest request = currentRequest;
+            final RecoveryRequest request = currentRequest;
             RecoveryRequestStep recoveryRequestStep = request.getRecoverySteps().stream().filter(
                     s -> s.getStepIndex() == step
             ).findAny().orElseThrow(
@@ -351,8 +362,8 @@ public class RecoveryManager {
                 e.printStackTrace();
             }
 
-            // report to shifter what happened and say what to do next
-            logger.info("This is what happened. ");
+            // TODO: report to shifter what happened and say what to do next
+            logger.trace("This is what happened. ");
         } else {
             logger.warn("Could not found recovery to approve with given id " + id);
         }
@@ -411,6 +422,8 @@ public class RecoveryManager {
 
     public void endRecovery() {
 
+        logger.info("Current recovery "+currentRequest.getProblemId()+" ("+currentRequest.getProblemTitle()+") finishes");
+
         currentRequest.setStatus("finished");
         recoveryJobRepository.save(currentRequest);
         dashboardController.notifyRecoveryStatus(getStatus());
@@ -418,7 +431,9 @@ public class RecoveryManager {
 
         if (waitingRequest == null) {
             currentRequest = null;
+            logger.info("There is no more recovery now");
         } else {
+            logger.info("Queued waiting recovery "+waitingRequest.getProblemId()+" ("+waitingRequest.getProblemTitle()+ ") will now become current one");
             recoverySequenceController.start(waitingRequest);
             setupRecoveryRequest(waitingRequest);
             waitingRequest = null;
@@ -439,7 +454,7 @@ public class RecoveryManager {
             if (RecoveryStatus.AwaitingApproval == recoverySequenceController.getCurrentStatus()) {
                 recoverySequenceController.end();
             } else {
-                logger.info("Ignoring finished signal, not in awaiting approval state");
+                logger.info("Ignoring finished signal of problem "+id+", not in awaiting approval state");
             }
         } else {
             logger.info("Ignoring finished signal, no condition with " + id);

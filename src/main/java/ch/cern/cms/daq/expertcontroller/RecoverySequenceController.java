@@ -123,9 +123,11 @@ public class RecoverySequenceController {
 
         currentStatus = RecoveryStatus.Observe;
 
-        finishAndStartNewCurrent("Observing ..", null, "Observing system for for response " + observePeriod + " ms");
+        logger.info("Recovery of step for problem " +initiatingProblem+ " has completed. Will now observe the system for response for "+observePeriod+"ms.");
+
 
         final RecoverySequenceController controller = this;
+
 
         Runnable runnable = new Runnable() {
             @Override
@@ -188,6 +190,8 @@ public class RecoverySequenceController {
 
     private void startRecoveryRecords(String currentTitle, Long problemId, String problemTitle){
 
+        logger.info("Creating new recovery records");
+
         Date requestReceivedDate = new Date();
         mainRecord = new RecoveryRecord();
         current = new RecoveryRecord();
@@ -203,6 +207,8 @@ public class RecoverySequenceController {
     }
 
     private void finishAndStartNewCurrent(String currentTitle, Long newConditionId, String currentDescription){
+
+        logger.info("Finishing and starting new current records");
 
         if(newConditionId != null) {
             mainRecord.getRelatedConditions().add(newConditionId);
@@ -221,6 +227,16 @@ public class RecoverySequenceController {
         recoveryRecordRepository.save(current);
     }
 
-
+    @Override
+    public String toString() {
+        return "RecoverySequenceController{" +
+                "recoveryRecordRepository=" + recoveryRecordRepository +
+                ", dashboardController=" + dashboardController +
+                ", executor=" + executor +
+                ", currentStatus=" + currentStatus +
+                ", mainRecord=" + mainRecord +
+                ", current=" + current +
+                '}';
+    }
 }
 
