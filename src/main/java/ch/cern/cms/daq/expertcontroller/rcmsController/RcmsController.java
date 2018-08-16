@@ -30,7 +30,8 @@ public class RcmsController {
         return null;
     }
 
-    private static final String senderURI = "lv0a-controller.local";
+    @Value("${rcms.uri}")
+    private  String senderURI;
 
 
     public RcmsController(){
