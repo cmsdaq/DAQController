@@ -6,6 +6,7 @@ import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
 import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -33,7 +34,9 @@ public class RecoverySequenceController {
     /**
      * Period of time to observe system in order to decide if recovery should be continued of finished
      */
-    public final static int observePeriod = 20000;
+
+    @Value("${observe.period}")
+    public long observePeriod;
 
     private final static Logger logger = Logger.getLogger(RecoverySequenceController.class);
 
