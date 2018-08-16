@@ -68,6 +68,12 @@ public class RecoveryManager {
      */
     private RecoveryRequest waitingRequest;
 
+    private Set<Long> ongoingProblems = Collections.synchronizedSet(new HashSet<>());
+    private Set<Long> preemptedProblems = Collections.synchronizedSet(new HashSet<>());
+
+    public Set<Long> getOngoingProblems() {
+        return ongoingProblems;
+    }
 
     /**
      * Submit new recovery request. This method will handle everything from filtering the request, requesting operator
@@ -81,6 +87,7 @@ public class RecoveryManager {
         response.setStatus(status);
         request.setReceived(new Date());
 
+        ongoingProblems.add(request.getProblemId());
 
         logger.info("Request will be " + status);
 
@@ -184,6 +191,14 @@ public class RecoveryManager {
 
     }
 
+    public void continueSameProblem(){
+
+        //getStepExecutionCount(currentRequest, request);
+        //recoveryJobRepository.save(request);
+        recoverySequenceController.continueSame(currentRequest);
+        setupRecoveryRequest(currentRequest); // pass current request
+
+    }
 
     /**
      * Set up recovery request. This means that the recovery has not been filtered out and now the approval request to
@@ -319,12 +334,12 @@ public class RecoveryManager {
 
             try {
 
-                rcmsController.recoverAndWait(request, recoveryRequestStep);
+                rcmsController.execute(request, recoveryRequestStep);
                 recoveryRequestStep.setStatus("finished");
                 recoveryRequestStep.setTimesExecuted(recoveryRequestStep.getTimesExecuted() + 1);
                 recoveryRequestStep.setFinished(new Date());
                 recoveryJobRepository.save(request);
-                recoverySequenceController.stepCompleted();
+                recoverySequenceController.stepCompleted(request.getProblemId());
 
                 dashboardController.notifyRecoveryStatus(getStatus());
 
@@ -414,6 +429,8 @@ public class RecoveryManager {
 
     public void finished(Long id) {
 
+        ongoingProblems.remove(id);
+
         if(recoverySequenceController.getMainRecord() != null
                 && recoverySequenceController.getMainRecord().getRelatedConditions() != null
                 && recoverySequenceController.getMainRecord().getRelatedConditions().contains(id)){
@@ -431,6 +448,38 @@ public class RecoveryManager {
         if (waitingRequest != null && waitingRequest.getProblemId() == id) {
             logger.info("Removing waiting request, condition with id " + id + " has finished");
             waitingRequest = null;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "RecoveryManager{" +
+                "executor=" + executor +
+                ", recoveryJobRepository=" + recoveryJobRepository +
+                ", recoveryRecordRepository=" + recoveryRecordRepository +
+                ", recoverySequenceController=" + recoverySequenceController +
+                ", dashboardController=" + dashboardController +
+                ", currentRequest=" + currentRequest +
+                ", lastRequest=" + lastRequest +
+                ", waitingRequest=" + waitingRequest +
+                ", ongoingProblems=" + ongoingProblems +
+                '}';
+    }
+
+    /**
+     * Method to check weather given problem was preempted
+     * @param problemId problem id
+     * @return true if problem was preempted, false otherwise
+     */
+    public boolean receivedPreemption(Long problemId){
+
+        logger.info("Checking whether post-observe actions should be applied for " + problemId + ", currently there are following preempted problems registered: " + preemptedProblems);
+
+        if(preemptedProblems.contains(problemId)){
+            preemptedProblems.remove(problemId);
+            return true;
+        } else{
+            return false;
         }
     }
 }

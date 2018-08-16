@@ -116,7 +116,7 @@ public class RecoverySequenceController {
 
     }
 
-    public void stepCompleted() {
+    public void stepCompleted(final Long initiatingProblem) {
 
         currentStatus = RecoveryStatus.Observe;
 
@@ -128,15 +128,40 @@ public class RecoverySequenceController {
             @Override
             public void run() {
 
-                if (RecoveryStatus.Observe == controller.getCurrentStatus()) {
-                    logger.info("Nothing happened during observe period, finishing condition");
-                    controller.end();
-                } else {
-                    logger.info("Other thing happend during observe period");
+                if(!recoveryManager.receivedPreemption(initiatingProblem)) {
+                    /* Recovery will be finished if nothing happens during observe period - no other requests from Expert - controller still in observe period, but:
+                     * - condition has been finished before
+                     * - condition has not been finished before
+                     */
+                    if (RecoveryStatus.Observe == controller.getCurrentStatus()) {
+
+                        logger.info("No recovery request received during observe period and... ");
+
+                        if (!recoveryManager.getOngoingProblems().contains(initiatingProblem)) {
+                            logger.info("... causing problem is no longer active - finishing the recovery");
+                            controller.end();
+                        } else {
+                            logger.info("... causing problem (" + initiatingProblem + ") is still on unfinished list (" + recoveryManager.getOngoingProblems() + ") - the recovery action didn't change anything - continue as the same problem");
+                            //controller.continueSame(recoveryRequest);
+                            recoveryManager.continueSameProblem();
+                        }
+
+                    } else {
+                        logger.info("Some recovery request received during observe period");
+                    }
+                } else{
+                    logger.info("Ignore proceeding steps of problem " + initiatingProblem + ", it was preempted during observe period");
                 }
             }
         };
-        executor.schedule(runnable, observePeriod, TimeUnit.MILLISECONDS);
+
+
+        if(!recoveryManager.receivedPreemption(initiatingProblem)) {
+            finishAndStartNewCurrent("Observing ..", null, "Observing system for for response " + observePeriod + " ms");
+            executor.schedule(runnable, observePeriod, TimeUnit.MILLISECONDS);
+        } else{
+            logger.info("Ignore proceeding steps of problem " + initiatingProblem + ", it was preempted before observe period started");
+        }
 
     }
 
