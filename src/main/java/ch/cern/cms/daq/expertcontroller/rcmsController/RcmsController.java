@@ -38,13 +38,44 @@ public class RcmsController {
         logger.info("RCMS controller will use following levelzero URI: " + L0_URI);
     }
 
-    public void sendTTCHardReset() throws  LV0AutomatorControlException{
-        L0Controller controller = new L0Controller(senderURI);
-        controller.addURI(L0_URI);
-        controller.sendTTCHardReset();
+
+    public void execute(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
+
+        // check if this is a ttchr request
+        if(isTTCHardResetOnlyRequest(recoveryRequestStep)){
+            sendTTCHardReset();
+        } else{
+            recoverAndWait(request, recoveryRequestStep);
+        }
     }
 
-    public void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
+    private boolean isTTCHardResetOnlyRequest(RecoveryRequestStep step){
+        if(step.getIssueTTCHardReset() != null && step.getIssueTTCHardReset()){
+            if(step.getGreenRecycle().size() != 0){
+                return false;
+            }
+            if(step.getRedRecycle().size() != 0){
+                return false;
+            }
+            if(step.getReset().size() != 0){
+                return false;
+            }
+            return true;
+        } else{
+            return false;
+        }
+    }
+
+    // TODO: change to private/protected
+    public void sendTTCHardReset() throws  LV0AutomatorControlException{
+        logger.info("Issuing TTCHardReset");
+        L0Controller controller = new L0Controller(senderURI);
+        controller.addURI(L0_URI);
+        boolean successfully = controller.sendTTCHardReset();
+        logger.info("TTCHardReset executed " + (successfully?"successfully":"unsuccessfully"));
+    }
+
+    protected void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
 
         LV0AutomatorController controller = new LV0AutomatorController(senderURI);
 
@@ -75,8 +106,8 @@ public class RcmsController {
             String recoveryAction = controller.getRecoveryAction();
             Map<String, String> subsytemRecoveryActions = controller.getSubsystemRecoveryActions();
 
-            System.out.println(recoveryAction);
-            System.out.println(subsytemRecoveryActions);
+            logger.trace(recoveryAction);
+            logger.trace(subsytemRecoveryActions);
 
             String status = recoveryRequestStep.getStatus();
             if(!status.equalsIgnoreCase(recoveryAction)){

@@ -33,12 +33,22 @@ public class L0Controller extends FMController {
         return commandBean;
     }
 
-    public void sendTTCHardReset() throws LV0AutomatorControlException {
+    public boolean sendTTCHardReset() throws LV0AutomatorControlException {
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         try {
             this.commandRelayRemote.execute(this.URIs, buildTTCHardResetBean(), this.senderURI);
+            return true;
         } catch (CommandServiceException e) {
             e.printStackTrace();
+            return false;
         }
+
+
     }
 }
