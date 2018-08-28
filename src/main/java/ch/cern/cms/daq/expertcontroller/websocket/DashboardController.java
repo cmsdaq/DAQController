@@ -23,7 +23,7 @@ public class DashboardController {
 
     @MessageMapping("/approve")
     @SendTo("/topic/recovery-status")
-    public RecoveryStatus approve(@RequestBody ApprovalResponse approvalResponse) throws Exception {
+    public RecoveryStatus approve(@RequestBody ApprovalResponse approvalResponse) {
 
         logger.info("Approval request: " + approvalResponse);
         recoveryManager.handleDecision(approvalResponse);

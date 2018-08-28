@@ -24,6 +24,14 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.junit.Assert.assertEquals;
 
+/**
+ * In this test the methods of RecoverySequenceController:
+ * - start
+ * - accept
+ * - stepCompleted
+ * - end
+ * are called and corresponding response of the system is tested.
+ */
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class RecoverySequenceControllerTest {

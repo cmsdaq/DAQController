@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Date;
 
 /**
- * Request from expert
+ * POJO sent from DAQExpert in order to request a recovery.
+ *
  */
 @Entity
 public class RecoveryRequest {

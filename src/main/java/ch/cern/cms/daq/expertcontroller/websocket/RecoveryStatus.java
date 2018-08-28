@@ -3,11 +3,25 @@ package ch.cern.cms.daq.expertcontroller.websocket;
 import java.util.List;
 import java.util.Date;
 
+/**
+ * Status of the recovery. This POJO is used to communicate current state of recovery to the dashboard.
+ */
 public class RecoveryStatus {
 
+    /** Id of the recovery, equal to id of the main recovery entry.
+    Identifies the recovery as understood by controller (as oppose to problem id - given by expert, and recovery request
+    id - given by controller on every request from expert, including subsequent request to the same problem)  */
     Long id;
 
+    /**
+     * Related condition ids.
+     */
     List<Long> conditionIds;
+
+    /**
+     * Related request ids
+     */
+    List<Long> requestIds;
 
     String status;
 
