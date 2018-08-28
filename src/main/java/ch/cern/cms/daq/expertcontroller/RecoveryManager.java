@@ -428,14 +428,20 @@ public class RecoveryManager {
         recoveryJobRepository.save(currentRequest);
         dashboardController.notifyRecoveryStatus(getStatus());
         lastRequest = currentRequest;
+        currentRequest = null;
 
         if (waitingRequest == null) {
-            currentRequest = null;
             logger.info("There is no more recovery now");
         } else {
-            logger.info("Queued waiting recovery "+waitingRequest.getProblemId()+" ("+waitingRequest.getProblemTitle()+ ") will now become current one");
-            recoverySequenceController.start(waitingRequest);
-            setupRecoveryRequest(waitingRequest);
+            logger.info("There is queued waiting recovery "+waitingRequest.getProblemId()+" ("+waitingRequest.getProblemTitle()+ ")");
+
+            if(ongoingProblems.contains(waitingRequest.getProblemId())) {
+                logger.info("Waiting recovery is related to ongoing problem, will now become current");
+                recoverySequenceController.start(waitingRequest);
+                setupRecoveryRequest(waitingRequest);
+            } else{
+                logger.info("Waiting request is no longer within ongoing problems, will be ignored");
+            }
             waitingRequest = null;
         }
 

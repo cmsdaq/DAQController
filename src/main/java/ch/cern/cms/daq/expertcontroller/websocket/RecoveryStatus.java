@@ -66,6 +66,14 @@ public class RecoveryStatus {
         this.conditionIds = conditionIds;
     }
 
+    public List<Long> getRequestIds() {
+        return requestIds;
+    }
+
+    public void setRequestIds(List<Long> requestIds) {
+        this.requestIds = requestIds;
+    }
+
     public Date getStartDate() {
         return startDate;
     }
@@ -82,12 +90,12 @@ public class RecoveryStatus {
         this.endDate = endDate;
     }
 
-
     @Override
     public String toString() {
         return "RecoveryStatus{" +
                 "id=" + id +
                 ", conditionIds=" + conditionIds +
+                ", requestIds=" + requestIds +
                 ", status='" + status + '\'' +
                 ", automatedSteps=" + automatedSteps +
                 ", startDate=" + startDate +

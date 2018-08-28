@@ -31,11 +31,14 @@ public class ExpertController {
     @Autowired
     RecoveryRecordRepository recoveryRecordRepository;
 
+    @Autowired
+    ProbeRecoverySender probeRecoverySender;
+
     @Value("${controller.message}")
     private String message;
 
     @RequestMapping(value = "/recover", method = RequestMethod.POST)
-    public ResponseEntity<RecoveryResponse> greeting(@RequestBody RecoveryRequest request) {
+    public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequest request) {
 
         logger.info("New recovery request: " + request.getProblemDescription() + " problem id: " + request.getProblemId());
 
@@ -53,6 +56,14 @@ public class ExpertController {
         logger.info("Finished signal received: " + id);
         recoveryManager.finished(id);
     }
+
+    @RequestMapping(value = "/fire-test-recovery", method = RequestMethod.GET)
+    public String testRecovery() {
+        logger.info("Issuing test recovery sequence");
+        probeRecoverySender.issueTestRecoverySequence();
+        return "Probe test recovery sequence completed";
+    }
+
 
     /**
      * Status of recovery. Id corresponds to Recovery record. TODO: make it possible to use this API with and without
