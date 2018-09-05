@@ -370,6 +370,11 @@ public class RecoveryManager {
 
     }
 
+    /**
+     * Handle decision.
+     * @param approvalResponse object representing decision of the operator.
+     * @return
+     */
     public String handleDecision(ApprovalResponse approvalResponse) {
         Long recoveryId = approvalResponse.getRecoveryId();
         Integer step = approvalResponse.getStep();
@@ -448,6 +453,10 @@ public class RecoveryManager {
 
     }
 
+    /**
+     * Called when conditions ends for any reason. E.g when condition was resolved by recovery action issued by this application or by any external factors.
+     * @param id id of the
+     */
     public void finished(Long id) {
 
         ongoingProblems.remove(id);

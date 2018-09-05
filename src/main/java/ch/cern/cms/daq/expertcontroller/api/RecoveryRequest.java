@@ -156,4 +156,11 @@ public class RecoveryRequest {
                 ", problemDescription='" + problemDescription + '\'' +
                 '}';
     }
+
+    public String getIdentifyingString(){
+        return "RecoveryRequest{" +
+                "id=" + id +
+                ", problemId=" + problemId +
+                '}';
+    }
 }

@@ -21,6 +21,11 @@ public class DashboardController {
     @Autowired
     private SimpMessagingTemplate template;
 
+    /**
+     * Method called by
+     * @param approvalResponse
+     * @return
+     */
     @MessageMapping("/approve")
     @SendTo("/topic/recovery-status")
     public RecoveryStatus approve(@RequestBody ApprovalResponse approvalResponse) {
@@ -33,7 +38,7 @@ public class DashboardController {
     }
 
     public void requestApprove(ApprovalRequest approvalRequest) {
-        System.out.println("Requesting operator approval of recovery: " + approvalRequest.getRecoveryId());
+        logger.info("Requesting operator approval of recovery: " + approvalRequest.getRecoveryId());
         this.template.convertAndSend("/topic/approveRequests", approvalRequest);
     }
 

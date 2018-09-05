@@ -84,20 +84,27 @@ public class RcmsController {
 
         controller.interruptRecovery();
 
+        logger.debug("Setting the schedule for " + request.getIdentifyingString());
+        logger.debug("Request details: " + request.toString());
+
         Map<String, String> schedules = new HashMap<>();
 
         for(String subsystem : recoveryRequestStep.getRedRecycle()){
+            logger.debug("Setting red-recycle for: " + subsystem);
             schedules.put(subsystem, LV0AutomatorController.SUBSYSTEM_SCHEDULE_RECYCLE);
         }
 
         for(String subsystem: recoveryRequestStep.getGreenRecycle()){
+            logger.debug("Setting green-recycle for: " + subsystem);
             schedules.put(subsystem, LV0AutomatorController.SUBSYSTEM_SCHEDULE_RECONFIGURE);
         }
         for(String subsystem: recoveryRequestStep.getReset()){
+            logger.debug("Clearing for: " + subsystem);
             schedules.put(subsystem, LV0AutomatorController.SUBSYSTEM_SCHEDULE_NONE);
         }
 
         for(String subsystem: recoveryRequestStep.getFault()){
+            logger.debug("Setting at-fault for: " + subsystem);
             controller.setFault(subsystem,true);
         }
         controller.setSchedules(schedules);

@@ -51,6 +51,12 @@ public class ExpertController {
     }
 
 
+    /**
+     * Endpoint to indicate that given condition finished.
+     *
+     * @param id identification number of condition given by the expert system. Note that it must be the same as the one
+     *           used while issuing recovery.
+     */
     @RequestMapping(value = "/finished", method = RequestMethod.POST)
     public void conditionFinished(@RequestBody Long id) {
         logger.info("Finished signal received: " + id);
