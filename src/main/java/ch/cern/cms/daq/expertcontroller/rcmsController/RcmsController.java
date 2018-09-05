@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.rcmsController;
 
-import ch.cern.cms.daq.expertcontroller.RecoveryManager;
+import ch.cern.cms.daq.expertcontroller.RecoveryService;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
 import org.apache.log4j.Logger;
@@ -18,7 +18,7 @@ public class RcmsController {
     private static Logger logger = Logger.getLogger(RcmsController.class);
 
     @Autowired
-    private RecoveryManager recoveryManager;
+    private RecoveryService recoveryService;
 
     @Value("${rcms.uri}")
     private String AUTOMATOR_URI;
@@ -120,7 +120,7 @@ public class RcmsController {
             String status = recoveryRequestStep.getStatus();
             if(!status.equalsIgnoreCase(recoveryAction)){
                 recoveryRequestStep.setStatus(recoveryAction);
-                recoveryManager.handleRecoveryStateUpdate(request);
+                recoveryService.handleRecoveryStateUpdate(request);
             }
 
             try {

@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.websocket;
 
-import ch.cern.cms.daq.expertcontroller.RecoveryManager;
+import ch.cern.cms.daq.expertcontroller.RecoveryService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,7 +16,7 @@ public class DashboardController {
 
 
     @Autowired
-    RecoveryManager recoveryManager;
+    RecoveryService recoveryService;
 
     @Autowired
     private SimpMessagingTemplate template;
@@ -31,9 +31,9 @@ public class DashboardController {
     public RecoveryStatus approve(@RequestBody ApprovalResponse approvalResponse) {
 
         logger.info("Approval request: " + approvalResponse);
-        recoveryManager.handleDecision(approvalResponse);
+        recoveryService.handleDecision(approvalResponse);
 
-        return recoveryManager.getStatus();
+        return recoveryService.getStatus();
 
     }
 

@@ -26,7 +26,7 @@ public class ExpertController {
     Logger logger = Logger.getLogger(ExpertController.class);
 
     @Autowired
-    RecoveryManager recoveryManager;
+    RecoveryService recoveryService;
 
     @Autowired
     RecoveryRecordRepository recoveryRecordRepository;
@@ -45,7 +45,7 @@ public class ExpertController {
         if (request.getRecoverySteps() == null || request.getRecoverySteps().size() == 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); //TODO might be useful to describe why bad request
         }
-        RecoveryResponse response = recoveryManager.submitRecoveryRequest(request);
+        RecoveryResponse response = recoveryService.submitRecoveryRequest(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -60,7 +60,7 @@ public class ExpertController {
     @RequestMapping(value = "/finished", method = RequestMethod.POST)
     public void conditionFinished(@RequestBody Long id) {
         logger.info("Finished signal received: " + id);
-        recoveryManager.finished(id);
+        recoveryService.finished(id);
     }
 
     @RequestMapping(value = "/fire-test-recovery", method = RequestMethod.GET)
@@ -87,7 +87,7 @@ public class ExpertController {
 
         logger.info("New recovery status request");
 
-        RecoveryStatus recoveryStatus = recoveryManager.getStatus();
+        RecoveryStatus recoveryStatus = recoveryService.getStatus();
 
         if (recoveryStatus != null) {
 
@@ -103,7 +103,7 @@ public class ExpertController {
 
         logger.info("New recovery status request: " + id + ":" + step);
 
-        String status = recoveryManager.getStatus(id, step);
+        String status = recoveryService.getStatus(id, step);
         return status;
     }
 

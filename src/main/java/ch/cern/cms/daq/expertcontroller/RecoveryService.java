@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
 /**
  * Responsible for managing the whole recovery process
  */
-@Component("recoveryManager")
-public class RecoveryManager {
+@Component("recoveryService")
+public class RecoveryService {
 
-    private final static Logger logger = Logger.getLogger(RecoveryManager.class);
+    private final static Logger logger = Logger.getLogger(RecoveryService.class);
     /**
      * Thread executor for handling jobs
      */
@@ -483,7 +483,7 @@ public class RecoveryManager {
 
     @Override
     public String toString() {
-        return "RecoveryManager{" +
+        return "RecoveryService{" +
                 "executor=" + executor +
                 ", recoveryJobRepository=" + recoveryJobRepository +
                 ", recoveryRecordRepository=" + recoveryRecordRepository +

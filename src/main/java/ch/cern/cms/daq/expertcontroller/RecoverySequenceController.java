@@ -9,9 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -29,14 +27,14 @@ public class RecoverySequenceController {
     private DashboardController dashboardController;
 
     @Autowired
-    private RecoveryManager recoveryManager;
+    private RecoveryService recoveryService;
 
     /**
      * Period of time to observe system in order to decide if recovery should be continued of finished
      */
 
     @Value("${observe.period}")
-    public long observePeriod;
+    protected long observePeriod;
 
     private final static Logger logger = Logger.getLogger(RecoverySequenceController.class);
 
@@ -97,7 +95,7 @@ public class RecoverySequenceController {
 
         currentStatus = RecoveryStatus.Idle;
         finishRecoveryRecords();
-        recoveryManager.endRecovery();
+        recoveryService.endRecovery();
 
     }
 
@@ -133,7 +131,7 @@ public class RecoverySequenceController {
             @Override
             public void run() {
 
-                if(!recoveryManager.receivedPreemption(initiatingProblem)) {
+                if(!recoveryService.receivedPreemption(initiatingProblem)) {
                     /* Recovery will be finished if nothing happens during observe period - no other requests from Expert - controller still in observe period, but:
                      * - condition has been finished before
                      * - condition has not been finished before
@@ -142,13 +140,13 @@ public class RecoverySequenceController {
 
                         logger.info("No recovery request received during observe period and... ");
 
-                        if (!recoveryManager.getOngoingProblems().contains(initiatingProblem)) {
+                        if (!recoveryService.getOngoingProblems().contains(initiatingProblem)) {
                             logger.info("... causing problem is no longer active - finishing the recovery");
                             controller.end();
                         } else {
                             logger.info("... causing problem (" + initiatingProblem + ") is still on unfinished list (" + recoveryManager.getOngoingProblems() + ") - the recovery action didn't change anything - continue as the same problem");
                             //controller.continueSame(recoveryRequest);
-                            recoveryManager.continueSameProblem();
+                            recoveryService.continueSameProblem();
                         }
 
                     } else {
@@ -161,7 +159,7 @@ public class RecoverySequenceController {
         };
 
 
-        if(!recoveryManager.receivedPreemption(initiatingProblem)) {
+        if(!recoveryService.receivedPreemption(initiatingProblem)) {
             finishAndStartNewCurrent("Observing ..", null, "Observing system for for response " + observePeriod + " ms");
             executor.schedule(runnable, observePeriod, TimeUnit.MILLISECONDS);
         } else{
