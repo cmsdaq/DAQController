@@ -1,14 +1,10 @@
 package ch.cern.cms.daq.expertcontroller;
 
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryResponse;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
 import ch.cern.cms.daq.expertcontroller.rcmsController.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.rcmsController.LV0AutomatorController;
-import ch.cern.cms.daq.expertcontroller.rcmsController.RcmsController;
-import org.h2.tools.Recover;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +41,7 @@ public class RecoverySequenceControllerTest {
     RecoveryRecordRepository recoveryRecordRepository;
 
     @Autowired
-    RecoveryManager recoveryManager;
+    RecoveryService recoveryService;
 
     @BeforeClass
     public static void beforeClass() {
@@ -61,7 +57,7 @@ public class RecoverySequenceControllerTest {
     public void reqularUseCaseTest() {
 
         System.out.println(recoverySequenceController);
-        System.out.println(recoveryManager);
+        System.out.println(recoveryService);
 
         // check initial state of repository
         Date start = new Date();
@@ -71,7 +67,7 @@ public class RecoverySequenceControllerTest {
 
         // step 1: issue a recovery and check repository
         recoverySequenceController.start(genereateRecoveryRequest(1L));
-        recoveryManager.getOngoingProblems().add(1L);
+        recoveryService.getOngoingProblems().add(1L);
 
 
         all = recoveryRecordRepository.findAll();
@@ -140,7 +136,7 @@ public class RecoverySequenceControllerTest {
         ));
 
         // step 4: signal from expert - problem finished
-        recoveryManager.finished(1L);
+        recoveryService.finished(1L);
 
         // step 5: signal from self (see observe period) - no more actions needed
         // recoverySequenceController.end(); - do not call this explicitely - this will be called after observe period ends.
@@ -188,7 +184,7 @@ public class RecoverySequenceControllerTest {
 
         // step 1: issue a recovery and check repository
         recoverySequenceController.start(genereateRecoveryRequest(2L));
-        recoveryManager.getOngoingProblems().add(2L);
+        recoveryService.getOngoingProblems().add(2L);
 
 
         all = recoveryRecordRepository.findAll();
@@ -211,7 +207,7 @@ public class RecoverySequenceControllerTest {
         assertEquals(4, all.size());
 
         // step 4: signal from expert DOESN'T COME - problem still ongoing
-        // recoveryManager.finished(2L); - don't call this - just for demonstration what is missing in this test case
+        // recoveryService.finished(2L); - don't call this - just for demonstration what is missing in this test case
 
         // step 5: signal from self (see observe period) - no more actions needed
         // recoverySequenceController.end(); - do not call - just for demonstration what is missing in this test case
@@ -259,13 +255,13 @@ public class RecoverySequenceControllerTest {
     }
 
     /**
-     * This TestConfig will be loaded by spring in order to replace RecoveryManager with it's mock version defined below
+     * This TestConfig will be loaded by spring in order to replace RecoveryService with it's mock version defined below
      */
     @TestConfiguration
     public static class TestConfig {
         @Bean
-        public RecoveryManager recoveryManager() {
-            return new RecoverySequenceControllerTest.TestConfig.RecoveryManagerMock();
+        public RecoveryService recoveryService() {
+            return new RecoveryServiceMock();
         }
 
         @Bean
@@ -278,10 +274,10 @@ public class RecoverySequenceControllerTest {
             return new RecoverySequenceControllerTest.TestConfig.LV0AutomatorControllerMock(null);
         }
 
-        public class RecoveryManagerMock extends RecoveryManager {
+        public class RecoveryServiceMock extends RecoveryService {
 
             /**
-             * This method of RecoveryManager is overwritten in order to prevent from calling other system functions which are not a scope of this test
+             * This method of RecoveryService is overwritten in order to prevent from calling other system functions which are not a scope of this test
              */
             @Override
             public void endRecovery() {

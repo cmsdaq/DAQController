@@ -144,7 +144,7 @@ public class RecoverySequenceController {
                             logger.info("... causing problem is no longer active - finishing the recovery");
                             controller.end();
                         } else {
-                            logger.info("... causing problem (" + initiatingProblem + ") is still on unfinished list (" + recoveryManager.getOngoingProblems() + ") - the recovery action didn't change anything - continue as the same problem");
+                            logger.info("... causing problem (" + initiatingProblem + ") is still on unfinished list (" + recoveryService.getOngoingProblems() + ") - the recovery action didn't change anything - continue as the same problem");
                             //controller.continueSame(recoveryRequest);
                             recoveryService.continueSameProblem();
                         }

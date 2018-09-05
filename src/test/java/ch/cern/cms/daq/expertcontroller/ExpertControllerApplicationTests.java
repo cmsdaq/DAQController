@@ -74,7 +74,7 @@ public class ExpertControllerApplicationTests {
     private RecoveryRecordRepository recoveryRecordRepository;
 
     @Autowired
-    private RecoveryManager recoveryManager;
+    private RecoveryService recoveryService;
 
 
     @BeforeClass
@@ -105,7 +105,7 @@ public class ExpertControllerApplicationTests {
 
         stompSession.subscribe(SUBSCRIBE_REQUEST, new DefaultStompFrameHandler());
 
-        recoveryManager.getOngoingProblems().clear();
+        recoveryService.getOngoingProblems().clear();
 
         //Thread.sleep(15000);
 
@@ -427,9 +427,9 @@ public class ExpertControllerApplicationTests {
 
 
         //System.out.println(recoverySequenceController);
-        System.out.println(recoveryManager);
+        System.out.println(recoveryService);
 
-        Assert.assertEquals("Nothing before",0, recoveryManager.getOngoingProblems().size());
+        Assert.assertEquals("Nothing before",0, recoveryService.getOngoingProblems().size());
 
         RecoveryRequest r = generateRecoveryRequest(10L);
 
@@ -444,7 +444,7 @@ public class ExpertControllerApplicationTests {
                         "conditionIds", contains(10),
                         "status", equalTo("awaiting approval"));
 
-        Assert.assertEquals(1, recoveryManager.getOngoingProblems().size());
+        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
         RecoveryRequest r2 = generateRecoveryRequest(11L);
 
@@ -486,7 +486,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body("name", contains(startsWith(recoveryPrefix), is(is(waitinMessage)), startsWith(recoveryPrefix), is(is(waitinMessage))));
 
-        Assert.assertEquals(2, recoveryManager.getOngoingProblems().size());
+        Assert.assertEquals(2, recoveryService.getOngoingProblems().size());
 
         ApprovalResponse approvalResponse = generateApprovalResponse(3L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
@@ -515,14 +515,14 @@ public class ExpertControllerApplicationTests {
                 .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), notNullValue(), nullValue()));
 
 
-        Assert.assertEquals(1, recoveryManager.getOngoingProblems().size());
+        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
         System.out.println("+++++++++++");
         Thread.sleep(observePeriod); // after 15 seconds the observingMessage will finish
 
 
         System.out.println("===========");
-        Assert.assertEquals(1, recoveryManager.getOngoingProblems().size());
+        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
         /* 1st recoveyr request will be preempted by 2nd request, after it's finished, 1st will be picked up again as it was not finished */
         given().queryParam("start", "2000-01-01T00:00:00Z")
