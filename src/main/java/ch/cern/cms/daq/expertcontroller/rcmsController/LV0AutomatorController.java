@@ -34,6 +34,7 @@ public class LV0AutomatorController extends FMController {
 	private static FunctionManagerParameterBean buildStartRecoveryBean() {
 		Map<String, String> requestMap = new HashMap<>();
 		requestMap.put("command", "startRecovery");
+		requestMap.put("source","DAQExpert");
 
 		return mapToBean(requestMap);
 	}
@@ -57,6 +58,7 @@ public class LV0AutomatorController extends FMController {
 	private static FunctionManagerParameterBean buildStartRunBean() {
 		Map<String, String> requestMap = new HashMap<>();
 		requestMap.put("command", "startRun");
+		requestMap.put("source","DAQExpert");
 
 		return mapToBean(requestMap);
 	}
@@ -81,6 +83,7 @@ public class LV0AutomatorController extends FMController {
 	private static FunctionManagerParameterBean buildInterruptRecoveryBean() {
 		Map<String, String> requestMap = new HashMap<>();
 		requestMap.put("command", "interruptRecovery");
+		requestMap.put("source","DAQExpert");
 
 		return mapToBean(requestMap);
 	}
