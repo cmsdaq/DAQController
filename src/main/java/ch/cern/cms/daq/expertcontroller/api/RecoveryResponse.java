@@ -1,8 +1,11 @@
 package ch.cern.cms.daq.expertcontroller.api;
 
+import lombok.Data;
+
 /**
- * Response to expert
+ * Response to expert. Data transfer object
  */
+@Data
 public class RecoveryResponse {
 
     /**
@@ -30,43 +33,4 @@ public class RecoveryResponse {
      */
     private Long continuesTheConditionId;
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Long getRecoveryId() {
-        return recoveryId;
-    }
-
-    public void setRecoveryId(Long recoveryId) {
-        this.recoveryId = recoveryId;
-    }
-
-    public Long getConditionId() {
-        return conditionId;
-    }
-
-    public void setConditionId(Long conditionId) {
-        this.conditionId = conditionId;
-    }
-
-    public Long getRejectedDueToConditionId() {
-        return rejectedDueToConditionId;
-    }
-
-    public void setRejectedDueToConditionId(Long rejectedDueToConditionId) {
-        this.rejectedDueToConditionId = rejectedDueToConditionId;
-    }
-
-    public Long getContinuesTheConditionId() {
-        return continuesTheConditionId;
-    }
-
-    public void setContinuesTheConditionId(Long continuesTheConditionId) {
-        this.continuesTheConditionId = continuesTheConditionId;
-    }
 }
