@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.websocket;
 
-import ch.cern.cms.daq.expertcontroller.RecoveryManager;
+import ch.cern.cms.daq.expertcontroller.RecoveryService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,24 +16,29 @@ public class DashboardController {
 
 
     @Autowired
-    RecoveryManager recoveryManager;
+    RecoveryService recoveryService;
 
     @Autowired
     private SimpMessagingTemplate template;
 
+    /**
+     * Method called by
+     * @param approvalResponse
+     * @return
+     */
     @MessageMapping("/approve")
     @SendTo("/topic/recovery-status")
-    public RecoveryStatus approve(@RequestBody ApprovalResponse approvalResponse) throws Exception {
+    public RecoveryStatusDTO approve(@RequestBody ApprovalResponse approvalResponse) {
 
         logger.info("Approval request: " + approvalResponse);
-        recoveryManager.handleDecision(approvalResponse);
+        recoveryService.handleDecision(approvalResponse);
 
-        return recoveryManager.getStatus();
+        return recoveryService.getStatus();
 
     }
 
     public void requestApprove(ApprovalRequest approvalRequest) {
-        System.out.println("Requesting operator approval of recovery: " + approvalRequest.getRecoveryId());
+        logger.info("Requesting operator approval of recovery: " + approvalRequest.getRecoveryId());
         this.template.convertAndSend("/topic/approveRequests", approvalRequest);
     }
 
@@ -42,9 +47,9 @@ public class DashboardController {
     }
 
 
-    public void notifyRecoveryStatus(RecoveryStatus recoveryStatus){
-        logger.info("Notifying dashboard status changed: " + recoveryStatus);
-        this.template.convertAndSend("/topic/recovery-status", recoveryStatus);
+    public void notifyRecoveryStatus(RecoveryStatusDTO recoveryStatusDTO){
+        logger.info("Notifying dashboard status changed: " + recoveryStatusDTO);
+        this.template.convertAndSend("/topic/recovery-status", recoveryStatusDTO);
     }
 
 }

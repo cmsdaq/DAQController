@@ -29,7 +29,7 @@ public class LV0AutomatorControllerTest {
             LV0AutomatorController controller = new LV0AutomatorController("lv0a-controller.local");
 
             // set controller target LV0A instance(s)
-            controller.addAutomatorURI(AUTOMATOR_URI);
+            controller.addURI(AUTOMATOR_URI);
 
             // interrupt the currently ongoing recovery
             controller.interruptRecovery();

@@ -9,12 +9,10 @@ import ch.cern.cms.daq.expertcontroller.websocket.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.websocket.ApprovalResponse;
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -44,6 +42,7 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.hasSize;
 
 
 //TODO: add test when condition finishes itself, add test when interrupt from LV0
@@ -51,6 +50,12 @@ import static org.hamcrest.Matchers.hasProperty;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class ExpertControllerApplicationTests {
+
+
+    @Value("${observe.period}")
+    private Long observePeriod;
+
+    private static final Long timeToExecute = 500L;
 
     /* Queue name for clients to subscribe to get approve requests */
     private static final String SUBSCRIBE_REQUEST = "/topic/approveRequests";
@@ -68,6 +73,14 @@ public class ExpertControllerApplicationTests {
     @Autowired
     private RecoveryRecordRepository recoveryRecordRepository;
 
+    @Autowired
+    private RecoveryService recoveryService;
+
+
+    @BeforeClass
+    public static void beforeClass() {
+        System.setProperty("observe.period", "1000");
+    }
 
     @LocalServerPort
     private int port;
@@ -91,6 +104,10 @@ public class ExpertControllerApplicationTests {
         }).get(1, SECONDS);
 
         stompSession.subscribe(SUBSCRIBE_REQUEST, new DefaultStompFrameHandler());
+
+        recoveryService.getOngoingProblems().clear();
+
+        //Thread.sleep(15000);
 
     }
 
@@ -233,7 +250,7 @@ public class ExpertControllerApplicationTests {
         ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
-        Thread.sleep(1000);
+        Thread.sleep(timeToExecute /2);
 
         // TODO: here for some reason waiting message is not present
         given().queryParam("start", start)
@@ -243,7 +260,7 @@ public class ExpertControllerApplicationTests {
 
 
         // wait until job finishes and observe period starts
-        Thread.sleep(5000);
+        Thread.sleep(timeToExecute/2 + observePeriod/2);
 
         given().queryParam("start", start)
                 .param("end", end).get("/records").then().assertThat()
@@ -333,7 +350,7 @@ public class ExpertControllerApplicationTests {
         ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
-        Thread.sleep(1000);
+        Thread.sleep(timeToExecute/2);
 
         /* Check recovery records in database */
         given().queryParam("start", "2000-01-01T00:00:00Z")
@@ -364,7 +381,7 @@ public class ExpertControllerApplicationTests {
 //                .body("status", equalTo("rejected"));
 
 
-        Thread.sleep(10000);
+        Thread.sleep(timeToExecute/2 + observePeriod/2); // end up in the middle of observing period
 
         given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
@@ -378,6 +395,16 @@ public class ExpertControllerApplicationTests {
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)));
+
+        System.out.println("Sleeping ");
+        Thread.sleep(observePeriod); // make sure you pass another half of observing period
+        System.out.println("Slept ");
+
+
+        given().queryParam("start", "2000-01-01T00:00:00Z")
+                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage)));
     }
 
     @Test
@@ -395,6 +422,15 @@ public class ExpertControllerApplicationTests {
     @Test
     public void preemptionTest() throws InterruptedException {
 
+        System.out.println("Preemption test");
+
+
+
+        //System.out.println(recoverySequenceController);
+        System.out.println(recoveryService);
+
+        Assert.assertEquals("Nothing before",0, recoveryService.getOngoingProblems().size());
+
         RecoveryRequest r = generateRecoveryRequest(10L);
 
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
@@ -408,8 +444,11 @@ public class ExpertControllerApplicationTests {
                         "conditionIds", contains(10),
                         "status", equalTo("awaiting approval"));
 
+        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
         RecoveryRequest r2 = generateRecoveryRequest(11L);
+
+
 
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
@@ -447,27 +486,43 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body("name", contains(startsWith(recoveryPrefix), is(is(waitinMessage)), startsWith(recoveryPrefix), is(is(waitinMessage))));
 
+        Assert.assertEquals(2, recoveryService.getOngoingProblems().size());
+
         ApprovalResponse approvalResponse = generateApprovalResponse(3L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
 
-        Thread.sleep(1000);
+        Thread.sleep(timeToExecute/2);
+
+
+        given().header(jsonHeader).body(11L).post("/finished").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()));
 
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", hasSize(5))
                 .body("name", contains(startsWith("Recovery of"), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)))
                 .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), nullValue()));
 
-        Thread.sleep(5000); // after 5 seconds the job will finish
+        Thread.sleep(timeToExecute/2 + observePeriod/2); // after 5 seconds the job will finish
+
 
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", hasSize(6))
                 .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)))
                 .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), notNullValue(), nullValue()));
 
-        Thread.sleep(RecoverySequenceController.observePeriod); // after 15 seconds the observingMessage will finish
+
+        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
+
+        System.out.println("+++++++++++");
+        Thread.sleep(observePeriod); // after 15 seconds the observingMessage will finish
+
+
+        System.out.println("===========");
+        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
         /* 1st recoveyr request will be preempted by 2nd request, after it's finished, 1st will be picked up again as it was not finished */
         given().queryParam("start", "2000-01-01T00:00:00Z")
@@ -491,7 +546,7 @@ public class ExpertControllerApplicationTests {
                         "status", equalTo("accepted"),
                         "recoveryId", equalTo(1));
 
-        Thread.sleep(1000);
+        //Thread.sleep(1000);
 
         Assert.assertEquals(1, approvalRequests.size());
         Assert.assertThat(approvalRequests, contains(hasProperty("recoveryId", is(1L))));
@@ -510,7 +565,7 @@ public class ExpertControllerApplicationTests {
 
 
         // wait until job finishes and observe period starts
-        Thread.sleep(10000);
+        Thread.sleep(timeToExecute + observePeriod/2);
 
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
@@ -539,9 +594,12 @@ public class ExpertControllerApplicationTests {
         ApprovalResponse approvalResponse2 = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse2);
 
+        Thread.sleep(  observePeriod/2);
+
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", hasSize(6))
                 .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage), startsWith(executingPrefix)))
                 .body("end", contains(nullValue(), notNullValue(), notNullValue(), notNullValue(), notNullValue(), nullValue()));
 
@@ -571,12 +629,29 @@ public class ExpertControllerApplicationTests {
             public void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
                 System.out.println("Recovery mock job started");
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(timeToExecute);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
                 System.out.println("Recovery mock job finished");
             }
+
+            @Override
+            public void sendTTCHardReset() throws  LV0AutomatorControlException {
+                System.out.println("TTCHardReset mock job started");
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("TTCHardReset mock job finished");
+            }
+
+            @Override
+            public void interrupt(){
+                System.out.println("Interrupt mock job started");
+            }
+
         }
 
 

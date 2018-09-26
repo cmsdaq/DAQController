@@ -5,13 +5,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class RecoveryManagerTest {
+public class RecoveryServiceTest {
 
-    RecoveryManager recoveryManager;
+    RecoveryService recoveryService;
 
     @Before
     public void prepare(){
-        recoveryManager = new RecoveryManager();
+        recoveryService = new RecoveryService();
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -19,7 +19,7 @@ public class RecoveryManagerTest {
 
         ApprovalResponse approvalResponse = new ApprovalResponse();
         approvalResponse.setApproved(true);
-        recoveryManager.handleDecision(approvalResponse);
+        recoveryService.handleDecision(approvalResponse);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -27,7 +27,7 @@ public class RecoveryManagerTest {
 
         ApprovalResponse approvalResponse = new ApprovalResponse();
         approvalResponse.setRecoveryId(1L);
-        recoveryManager.handleDecision(approvalResponse);
+        recoveryService.handleDecision(approvalResponse);
     }
 
     @Test
@@ -37,7 +37,7 @@ public class RecoveryManagerTest {
         approvalResponse.setRecoveryId(1L);
         approvalResponse.setStep(1);
         approvalResponse.setApproved(true);
-        String result = recoveryManager.handleDecision(approvalResponse);
+        String result = recoveryService.handleDecision(approvalResponse);
         Assert.assertEquals("Recovery step successfully approved",result);
     }
 
@@ -47,7 +47,7 @@ public class RecoveryManagerTest {
         ApprovalResponse approvalResponse = new ApprovalResponse();
         approvalResponse.setRecoveryId(1L);
         approvalResponse.setApproved(true);
-        String result = recoveryManager.handleDecision(approvalResponse);
+        String result = recoveryService.handleDecision(approvalResponse);
         Assert.assertEquals("Recovery procedure successfully approved",result);
     }
 }

@@ -1,5 +1,8 @@
 package ch.cern.cms.daq.expertcontroller.websocket;
 
+/**
+ * POJO sent from dashboard in order to confirm approved steps to execute
+ */
 public class ApprovalResponse {
 
     Long recoveryId;

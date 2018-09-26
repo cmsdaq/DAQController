@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.rcmsController;
 
-import ch.cern.cms.daq.expertcontroller.RecoveryManager;
+import ch.cern.cms.daq.expertcontroller.RecoveryService;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
 import org.apache.log4j.Logger;
@@ -18,41 +18,93 @@ public class RcmsController {
     private static Logger logger = Logger.getLogger(RcmsController.class);
 
     @Autowired
-    private RecoveryManager recoveryManager;
+    private RecoveryService recoveryService;
 
     @Value("${rcms.uri}")
     private String AUTOMATOR_URI;
+
+    @Value("${l0.uri}")
+    private String L0_URI;
 
     public String getSubsystemStatus(){
         return null;
     }
 
+    @Value("${rcms.uri}")
+    private  String senderURI;
+
+
     public RcmsController(){
         logger.info("RCMS controller will use following automator URI: " + AUTOMATOR_URI);
+        logger.info("RCMS controller will use following levelzero URI: " + L0_URI);
     }
 
-    public void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
 
-        LV0AutomatorController controller = new LV0AutomatorController("lv0a-controller.local");
+    public void execute(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
 
-        controller.addAutomatorURI(AUTOMATOR_URI);
+        // check if this is a ttchr request
+        if(isTTCHardResetOnlyRequest(recoveryRequestStep)){
+            sendTTCHardReset();
+        } else{
+            recoverAndWait(request, recoveryRequestStep);
+        }
+    }
+
+    private boolean isTTCHardResetOnlyRequest(RecoveryRequestStep step){
+        if(step.getIssueTTCHardReset() != null && step.getIssueTTCHardReset()){
+            if(step.getGreenRecycle().size() != 0){
+                return false;
+            }
+            if(step.getRedRecycle().size() != 0){
+                return false;
+            }
+            if(step.getReset().size() != 0){
+                return false;
+            }
+            return true;
+        } else{
+            return false;
+        }
+    }
+
+    // TODO: change to private/protected
+    public void sendTTCHardReset() throws  LV0AutomatorControlException{
+        logger.info("Issuing TTCHardReset");
+        L0Controller controller = new L0Controller(senderURI);
+        controller.addURI(L0_URI);
+        boolean successfully = controller.sendTTCHardReset();
+        logger.info("TTCHardReset executed " + (successfully?"successfully":"unsuccessfully"));
+    }
+
+    protected void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
+
+        LV0AutomatorController controller = new LV0AutomatorController(senderURI);
+
+        controller.addURI(AUTOMATOR_URI);
 
         controller.interruptRecovery();
+
+        logger.debug("Setting the schedule for " + request.getIdentifyingString());
+        logger.debug("Request details: " + request.toString());
 
         Map<String, String> schedules = new HashMap<>();
 
         for(String subsystem : recoveryRequestStep.getRedRecycle()){
+            logger.debug("Setting red-recycle for: " + subsystem);
             schedules.put(subsystem, LV0AutomatorController.SUBSYSTEM_SCHEDULE_RECYCLE);
         }
 
         for(String subsystem: recoveryRequestStep.getGreenRecycle()){
+            logger.debug("Setting green-recycle for: " + subsystem);
             schedules.put(subsystem, LV0AutomatorController.SUBSYSTEM_SCHEDULE_RECONFIGURE);
         }
         for(String subsystem: recoveryRequestStep.getReset()){
+            logger.debug("Clearing for: " + subsystem);
             schedules.put(subsystem, LV0AutomatorController.SUBSYSTEM_SCHEDULE_NONE);
         }
 
         for(String subsystem: recoveryRequestStep.getFault()){
+            logger.debug("Setting at-fault for: " + subsystem);
             controller.setFault(subsystem,true);
         }
         controller.setSchedules(schedules);
@@ -62,13 +114,13 @@ public class RcmsController {
             String recoveryAction = controller.getRecoveryAction();
             Map<String, String> subsytemRecoveryActions = controller.getSubsystemRecoveryActions();
 
-            System.out.println(recoveryAction);
-            System.out.println(subsytemRecoveryActions);
+            logger.trace(recoveryAction);
+            logger.trace(subsytemRecoveryActions);
 
             String status = recoveryRequestStep.getStatus();
             if(!status.equalsIgnoreCase(recoveryAction)){
                 recoveryRequestStep.setStatus(recoveryAction);
-                recoveryManager.handleRecoveryStateUpdate(request);
+                recoveryService.handleRecoveryStateUpdate(request);
             }
 
             try {
@@ -85,7 +137,7 @@ public class RcmsController {
         LV0AutomatorController controller = null;
         try {
             controller = new LV0AutomatorController("lv0a-controller.local");
-            controller.addAutomatorURI(AUTOMATOR_URI);
+            controller.addURI(AUTOMATOR_URI);
             return controller.isRecoveryOngoing();
         } catch (LV0AutomatorControlException e) {
             e.printStackTrace();
@@ -98,7 +150,7 @@ public class RcmsController {
         LV0AutomatorController controller = null;
         try {
             controller = new LV0AutomatorController("lv0a-controller.local");
-            controller.addAutomatorURI(AUTOMATOR_URI);
+            controller.addURI(AUTOMATOR_URI);
             controller.interruptRecovery();
         } catch (LV0AutomatorControlException e){
             e.printStackTrace();
