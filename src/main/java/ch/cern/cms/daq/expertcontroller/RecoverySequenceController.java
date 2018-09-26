@@ -38,6 +38,11 @@ public class RecoverySequenceController {
 
     private final static Logger logger = Logger.getLogger(RecoverySequenceController.class);
 
+    /**
+     * Scheduled tasks executor. For example it executes actions when observe period finishes, or when awaiting-approval
+     * timeouts. Only one action can be executed at the moment to assure correct transitions of FSM of recovery (hence
+     * thread pool size is 1)
+     */
     private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
 
     private RecoveryStatus currentStatus;
