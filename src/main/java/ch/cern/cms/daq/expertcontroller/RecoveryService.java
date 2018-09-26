@@ -353,7 +353,7 @@ public class RecoveryService {
     public void approvedStep(long id, int step) {
         // ask shifter for confirmation - this can be timed out by expert
 
-        logger.info("Available request awaiting approval: " + currentRequest.getIdentifyingString());
+        logger.info("Available request awaiting approval: " + ((currentRequest != null)? currentRequest.getIdentifyingString(): "[no request at the moment]"));
 
         if (currentRequest != null && recoverySequenceController.getMainRecord().getId() == id) {
 
