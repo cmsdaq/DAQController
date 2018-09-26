@@ -4,7 +4,7 @@ import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryResponse;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatus;
+import ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatusDTO;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +75,7 @@ public class ExpertController {
      * Status of recovery. Id corresponds to Recovery record. TODO: make it possible to use this API with and without
      */
     @RequestMapping(value = "/status/{id}/", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryStatus> status(@PathVariable Long id) {
+    public ResponseEntity<RecoveryStatusDTO> status(@PathVariable Long id) {
         throw new NotYetImplementedException();
     }
 
@@ -83,15 +83,15 @@ public class ExpertController {
      * Status of current recovery.
      */
     @RequestMapping(value = "/status/", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryStatus> status() {
+    public ResponseEntity<RecoveryStatusDTO> status() {
 
         logger.info("New recovery status request");
 
-        RecoveryStatus recoveryStatus = recoveryService.getStatus();
+        RecoveryStatusDTO recoveryStatusDTO = recoveryService.getStatus();
 
-        if (recoveryStatus != null) {
+        if (recoveryStatusDTO != null) {
 
-            return ResponseEntity.ok(recoveryStatus);
+            return ResponseEntity.ok(recoveryStatusDTO);
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }

@@ -225,13 +225,13 @@ public class RecoveryService {
 
     }
 
-    public ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatus getStatus() {
+    public RecoveryStatusDTO getStatus() {
 
 
         RecoveryRecord recoveryRecord = recoverySequenceController.getMainRecord();
         if (recoveryRecord != null) {
 
-            ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatus response = new ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatus();
+            RecoveryStatusDTO response = new RecoveryStatusDTO();
 
             response.setAutomatedSteps(new ArrayList<>());
             response.setId(recoveryRecord.getId());
@@ -256,7 +256,7 @@ public class RecoveryService {
             response.setConditionIds(recoveryRecord.getRelatedConditions().stream().collect(Collectors.toList()));
 
             for (RecoveryRequestStep recoveryRequestStep : recoverySteps) {
-                RecoveryStepStatus stepStatus = new RecoveryStepStatus();
+                RecoveryStepStatusDTO stepStatus = new RecoveryStepStatusDTO();
                 stepStatus.setStarted(recoveryRequestStep.getStarted());
                 stepStatus.setFinished(recoveryRequestStep.getFinished());
 

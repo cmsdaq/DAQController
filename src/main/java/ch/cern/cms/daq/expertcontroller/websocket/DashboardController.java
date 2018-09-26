@@ -28,7 +28,7 @@ public class DashboardController {
      */
     @MessageMapping("/approve")
     @SendTo("/topic/recovery-status")
-    public RecoveryStatus approve(@RequestBody ApprovalResponse approvalResponse) {
+    public RecoveryStatusDTO approve(@RequestBody ApprovalResponse approvalResponse) {
 
         logger.info("Approval request: " + approvalResponse);
         recoveryService.handleDecision(approvalResponse);
@@ -47,9 +47,9 @@ public class DashboardController {
     }
 
 
-    public void notifyRecoveryStatus(RecoveryStatus recoveryStatus){
-        logger.info("Notifying dashboard status changed: " + recoveryStatus);
-        this.template.convertAndSend("/topic/recovery-status", recoveryStatus);
+    public void notifyRecoveryStatus(RecoveryStatusDTO recoveryStatusDTO){
+        logger.info("Notifying dashboard status changed: " + recoveryStatusDTO);
+        this.template.convertAndSend("/topic/recovery-status", recoveryStatusDTO);
     }
 
 }
