@@ -26,17 +26,13 @@ public class ProbeRecoverySender {
 
     private static long problemId = 0;
 
-    public void issueTestRecoverySequence(){
+    public void issueTestRecoverySequence() {
 
-
-        RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest( );
+        RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest();
         recoveryRequest1.getRecoverySteps().iterator().next().setIssueTTCHardReset(true);
         logger.info("Sending TTC Hard Reset reset");
         sendRequestAndApprove(recoveryRequest1);
         logger.info("TTC Hard Reset sent");
-
-
-
 
         RecoveryRequest recoveryRequest2 = generateEmptyRecoveryRequest();
         recoveryRequest2.getRecoverySteps().iterator().next().getGreenRecycle().add("ECAL");
@@ -45,12 +41,9 @@ public class ProbeRecoverySender {
         sendRequestAndApprove(recoveryRequest2);
         logger.info("Stop and start with ECAL green recycle sent");
 
-
-
-
     }
 
-    private void sendRequestAndApprove(RecoveryRequest recoveryRequest){
+    private void sendRequestAndApprove(RecoveryRequest recoveryRequest) {
         ResponseEntity<RecoveryResponse> response = expertController.requestRecovery(recoveryRequest);
         Long recovery1Id = response.getBody().getRecoveryId();
 
@@ -66,7 +59,6 @@ public class ProbeRecoverySender {
         ar.setStep(0);
 
         logger.info("Sending test approval");
-        System.out.println("Sending test approval");
         dashboardController.approve(ar);
 
         try {
@@ -79,7 +71,7 @@ public class ProbeRecoverySender {
 
     }
 
-    private RecoveryRequest generateEmptyRecoveryRequest(){
+    private RecoveryRequest generateEmptyRecoveryRequest() {
 
         final Long id = problemId++;
         String problemTitle = "Probe problem " + id;
