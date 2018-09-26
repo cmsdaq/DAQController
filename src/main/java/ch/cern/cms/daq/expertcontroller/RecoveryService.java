@@ -13,6 +13,7 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.stream.Collectors;
@@ -64,6 +65,22 @@ public class RecoveryService {
 
     private Set<Long> ongoingProblems = Collections.synchronizedSet(new HashSet<>());
     private Set<Long> preemptedProblems = Collections.synchronizedSet(new HashSet<>());
+
+    @PreDestroy
+    public void shutdown(){
+        logger.info("Recovery service is going down. Ending the ongoing recovery if exists.");
+
+
+        if(currentRequest != null) {
+            RecoveryRecord mainRecord = recoverySequenceController.getMainRecord();
+            if(mainRecord != null){
+                String description = mainRecord.getDescription();
+                description = description == null? "" : description + " ";
+                mainRecord.setDescription(description + "Interrupted by service shutdown.");
+            }
+            recoverySequenceController.end();
+        }
+    }
 
     public Set<Long> getOngoingProblems() {
         return ongoingProblems;
