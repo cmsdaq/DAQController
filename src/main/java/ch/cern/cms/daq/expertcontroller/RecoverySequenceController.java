@@ -36,6 +36,9 @@ public class RecoverySequenceController {
     @Value("${observe.period}")
     protected long observePeriod;
 
+    @Value("${approval.timeout}")
+    protected long approvalTimeout;
+
     private final static Logger logger = Logger.getLogger(RecoverySequenceController.class);
 
     /**
@@ -64,6 +67,7 @@ public class RecoverySequenceController {
         currentStatus = RecoveryStatus.AwaitingApproval;
 
         startRecoveryRecords("Waiting for approval", recoveryRequest.getProblemId(), recoveryRequest.getProblemTitle());
+        scheduleAvaitingApprovalTimeout(recoveryRequest.getProblemId());
     }
 
     public void preempt(RecoveryRequest recoveryRequest) {
@@ -79,6 +83,38 @@ public class RecoverySequenceController {
 
         /* Than start new recovery records */
         startRecoveryRecords("Waiting for approval", recoveryRequest.getProblemId(), recoveryRequest.getProblemTitle());
+
+        scheduleAvaitingApprovalTimeout(recoveryRequest.getProblemId());
+
+    }
+
+    private void scheduleAvaitingApprovalTimeout(final Long initiatingProblem) {
+
+
+        final RecoverySequenceController controller = this;
+        Runnable awaitingApprovalTimeoutJob = () -> {
+
+            logger.info("Scheduled job for " + initiatingProblem + " will now be executed");
+            /*
+             *Assumptions: there were no transitions since the time this job was scheduled.
+             * TODO: introduce a log of transitions and check if there was one
+             */
+            if (recoveryService.getCurrentRequestId() == null || initiatingProblem == recoveryService.getCurrentRequestId()) {
+                if (RecoveryStatus.AwaitingApproval == controller.getCurrentStatus()) {
+                    RecoveryRecord mainRecord = getMainRecord();
+                    if (mainRecord != null) {
+                        String description = mainRecord.getDescription();
+                        description = description == null ? "" : description + " ";
+                        mainRecord.setDescription(description + "Awaiting approval timeout.");
+                    }
+                    controller.end();
+                }
+            }
+
+        };
+
+        logger.info("Scheduling timeout job for Awaiting approval. It will be executed after " + approvalTimeout + " ms");
+        executor.schedule(awaitingApprovalTimeoutJob, approvalTimeout, TimeUnit.MILLISECONDS);
 
     }
 

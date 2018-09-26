@@ -549,4 +549,12 @@ public class RecoveryService {
             return false;
         }
     }
+
+    public Long getCurrentRequestId() {
+        if(currentRequest != null){
+            return currentRequest.getProblemId();
+        }
+        return null;
+    }
+
 }
