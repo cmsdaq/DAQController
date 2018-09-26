@@ -127,41 +127,39 @@ public class RecoverySequenceController {
         final RecoverySequenceController controller = this;
 
 
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
+        Runnable handleObservePeriodFinished = () -> {
 
-                if(!recoveryService.receivedPreemption(initiatingProblem)) {
-                    /* Recovery will be finished if nothing happens during observe period - no other requests from Expert - controller still in observe period, but:
-                     * - condition has been finished before
-                     * - condition has not been finished before
-                     */
-                    if (RecoveryStatus.Observe == controller.getCurrentStatus()) {
+            if (!recoveryService.receivedPreemption(initiatingProblem)) {
+                /* Recovery will be finished if nothing happens during observe period - no other requests from Expert - controller still in observe period, but:
+                 * - condition has been finished before
+                 * - condition has not been finished before
+                 */
+                if (RecoveryStatus.Observe == controller.getCurrentStatus()) {
 
-                        logger.info("No recovery request received during observe period and... ");
+                    logger.info("No recovery request received during observe period and... ");
 
-                        if (!recoveryService.getOngoingProblems().contains(initiatingProblem)) {
-                            logger.info("... causing problem is no longer active - finishing the recovery");
-                            controller.end();
-                        } else {
-                            logger.info("... causing problem (" + initiatingProblem + ") is still on unfinished list (" + recoveryService.getOngoingProblems() + ") - the recovery action didn't change anything - continue as the same problem");
-                            //controller.continueSame(recoveryRequest);
-                            recoveryService.continueSameProblem();
-                        }
-
+                    if (!recoveryService.getOngoingProblems().contains(initiatingProblem)) {
+                        logger.info("... causing problem is no longer active - finishing the recovery");
+                        controller.end();
                     } else {
-                        logger.info("Some recovery request received during observe period");
+                        logger.info("... causing problem (" + initiatingProblem + ") is still on unfinished list (" + recoveryService.getOngoingProblems() + ") - the recovery action didn't change anything - continue as the same problem");
+                        //controller.continueSame(recoveryRequest);
+                        recoveryService.continueSameProblem();
                     }
-                } else{
-                    logger.info("Ignore proceeding steps of problem " + initiatingProblem + ", it was preempted during observe period");
+
+                } else {
+                    logger.info("Some recovery request received during observe period");
                 }
+            } else {
+                logger.info("Ignore proceeding steps of problem " + initiatingProblem + ", it was preempted during observe period");
             }
+
         };
 
 
         if(!recoveryService.receivedPreemption(initiatingProblem)) {
             finishAndStartNewCurrent("Observing ..", null, "Observing system for for response " + observePeriod + " ms");
-            executor.schedule(runnable, observePeriod, TimeUnit.MILLISECONDS);
+            executor.schedule(handleObservePeriodFinished, observePeriod, TimeUnit.MILLISECONDS);
         } else{
             logger.info("Ignore proceeding steps of problem " + initiatingProblem + ", it was preempted before observe period started");
         }
@@ -225,16 +223,5 @@ public class RecoverySequenceController {
         recoveryRecordRepository.save(current);
     }
 
-    @Override
-    public String toString() {
-        return "RecoverySequenceController{" +
-                "recoveryRecordRepository=" + recoveryRecordRepository +
-                ", dashboardController=" + dashboardController +
-                ", executor=" + executor +
-                ", currentStatus=" + currentStatus +
-                ", mainRecord=" + mainRecord +
-                ", current=" + current +
-                '}';
-    }
 }
 
