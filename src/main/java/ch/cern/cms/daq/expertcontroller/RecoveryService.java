@@ -117,6 +117,7 @@ public class RecoveryService {
                 recoverySequenceController.start(request);
 
                 setupRecoveryRequest(request);
+                response.setRecoveryProcedureId(recoverySequenceController.getMainRecord() != null ? recoverySequenceController.getMainRecord().getId() : null);
                 break;
             case "acceptedWithPreemption":
                 logger.info("Accepted with preemption recovery " + request.getIdentifyingString() + ". Previous recovery: " + currentRequest.getIdentifyingString() + " preempted.");
@@ -131,6 +132,7 @@ public class RecoveryService {
                 waitingRequest = currentRequest;
                 recoverySequenceController.preempt(request);
                 setupRecoveryRequest(request);
+                response.setRecoveryProcedureId(recoverySequenceController.getMainRecord() != null ? recoverySequenceController.getMainRecord().getId() : null);
                 break;
 
             case "acceptedToContinue":
@@ -145,6 +147,7 @@ public class RecoveryService {
 
 
                 setupRecoveryRequest(request); // pass current request
+                response.setRecoveryProcedureId(recoverySequenceController.getMainRecord() != null ? recoverySequenceController.getMainRecord().getId() : null);
                 break;
             case "acceptedToPostpone":
 
@@ -398,7 +401,7 @@ public class RecoveryService {
             // TODO: report to shifter what happened and say what to do next
             logger.trace("This is what happened. ");
         } else {
-            logger.warn("Could not found recovery to approve with given id " + id);
+            logger.warn("Could not find recovery to approve with given id " + id);
         }
 
     }

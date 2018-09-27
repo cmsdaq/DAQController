@@ -7,6 +7,7 @@ import ch.cern.cms.daq.expertcontroller.websocket.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -22,20 +23,32 @@ public class ProbeRecoverySender {
     @Autowired
     private DashboardController dashboardController;
 
+    @Value("${observe.period}")
+    protected long observePeriod;
+
     private static final Logger logger = Logger.getLogger(ProbeRecoverySender.class);
 
     private static long problemId = 0;
 
-    public void issueTestRecoverySequence() {
+    public void issueTestRecoverySequence(String subsystem) {
 
-        RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest();
+        RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest(subsystem);
         recoveryRequest1.getRecoverySteps().iterator().next().setIssueTTCHardReset(true);
         logger.info("Sending TTC Hard Reset reset");
         sendRequestAndApprove(recoveryRequest1);
         logger.info("TTC Hard Reset sent");
 
-        RecoveryRequest recoveryRequest2 = generateEmptyRecoveryRequest();
-        recoveryRequest2.getRecoverySteps().iterator().next().getGreenRecycle().add("ECAL");
+        try {
+            Thread.sleep(observePeriod);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        RecoveryRequest recoveryRequest2 = generateEmptyRecoveryRequest(subsystem);
+        if(subsystem != null) {
+            recoveryRequest2.getRecoverySteps().iterator().next().getGreenRecycle().add(subsystem);
+        }
+
         recoveryRequest2.setWithInterrupt(true);
         logger.info("Requesting stop and start with ECAL green recycle");
         sendRequestAndApprove(recoveryRequest2);
@@ -45,7 +58,7 @@ public class ProbeRecoverySender {
 
     private void sendRequestAndApprove(RecoveryRequest recoveryRequest) {
         ResponseEntity<RecoveryResponse> response = expertController.requestRecovery(recoveryRequest);
-        Long recovery1Id = response.getBody().getRecoveryId();
+        Long recovery1Id = response.getBody().getRecoveryProcedureId();
 
         try {
             Thread.sleep(10000);
@@ -71,10 +84,13 @@ public class ProbeRecoverySender {
 
     }
 
-    private RecoveryRequest generateEmptyRecoveryRequest() {
+    private RecoveryRequest generateEmptyRecoveryRequest(String subsystem) {
 
         final Long id = problemId++;
         String problemTitle = "Probe problem " + id;
+        if(subsystem != null){
+            problemTitle += " for subsystem " + subsystem;
+        }
         RecoveryRequest recoveryRequest = new RecoveryRequest();
         recoveryRequest.setProblemTitle(problemTitle);
         recoveryRequest.setProblemId(id);

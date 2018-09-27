@@ -14,7 +14,7 @@ public class RecoveryResponse {
     private String status;
 
     /**
-     * Id of the recovery that was accepted or rejected
+     * Id of the recovery request that was accepted or rejected
      */
     private Long recoveryId;
 
@@ -22,6 +22,11 @@ public class RecoveryResponse {
      * Id of the condition that generated recovery
      */
     private Long conditionId;
+
+    /**
+     * Id of the recovery procedure
+     */
+    private Long recoveryProcedureId;
 
     /**
      * Id of the condition that was a reason of rejection
