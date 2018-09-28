@@ -41,7 +41,7 @@ public class ExpertControllerServletApplication extends SpringBootServletInitial
 
             if(runTestCommands!= null && runTestCommands) {
                 logger.info("Test commands enabled");
-                probeRecoverySender.issueTestRecoverySequence();
+                probeRecoverySender.issueTestRecoverySequence(null);
 
             } else{
                 logger.info("Test commands disabled");

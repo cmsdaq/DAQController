@@ -64,9 +64,9 @@ public class ExpertController {
     }
 
     @RequestMapping(value = "/fire-test-recovery", method = RequestMethod.GET)
-    public String testRecovery() {
+    public String testRecovery(@RequestParam(value = "subsystem", required = false) String subsystem) {
         logger.info("Issuing test recovery sequence");
-        probeRecoverySender.issueTestRecoverySequence();
+        probeRecoverySender.issueTestRecoverySequence(subsystem);
         return "Probe test recovery sequence completed";
     }
 
