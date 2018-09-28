@@ -4,7 +4,7 @@ import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.api.RecoveryResponse;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
 import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatus;
+import ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatusDTO;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,39 +26,56 @@ public class ExpertController {
     Logger logger = Logger.getLogger(ExpertController.class);
 
     @Autowired
-    RecoveryManager recoveryManager;
+    RecoveryService recoveryService;
 
     @Autowired
     RecoveryRecordRepository recoveryRecordRepository;
+
+    @Autowired
+    ProbeRecoverySender probeRecoverySender;
 
     @Value("${controller.message}")
     private String message;
 
     @RequestMapping(value = "/recover", method = RequestMethod.POST)
-    public ResponseEntity<RecoveryResponse> greeting(@RequestBody RecoveryRequest request) {
+    public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequest request) {
 
         logger.info("New recovery request: " + request.getProblemDescription() + " problem id: " + request.getProblemId());
 
         if (request.getRecoverySteps() == null || request.getRecoverySteps().size() == 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); //TODO might be useful to describe why bad request
         }
-        RecoveryResponse response = recoveryManager.submitRecoveryRequest(request);
+        RecoveryResponse response = recoveryService.submitRecoveryRequest(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
 
+    /**
+     * Endpoint to indicate that given condition finished.
+     *
+     * @param id identification number of condition given by the expert system. Note that it must be the same as the one
+     *           used while issuing recovery.
+     */
     @RequestMapping(value = "/finished", method = RequestMethod.POST)
     public void conditionFinished(@RequestBody Long id) {
         logger.info("Finished signal received: " + id);
-        recoveryManager.finished(id);
+        recoveryService.finished(id);
     }
+
+    @RequestMapping(value = "/fire-test-recovery", method = RequestMethod.GET)
+    public String testRecovery(@RequestParam(value = "subsystem", required = false) String subsystem) {
+        logger.info("Issuing test recovery sequence");
+        probeRecoverySender.issueTestRecoverySequence(subsystem);
+        return "Probe test recovery sequence completed";
+    }
+
 
     /**
      * Status of recovery. Id corresponds to Recovery record. TODO: make it possible to use this API with and without
      */
     @RequestMapping(value = "/status/{id}/", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryStatus> status(@PathVariable Long id) {
+    public ResponseEntity<RecoveryStatusDTO> status(@PathVariable Long id) {
         throw new NotYetImplementedException();
     }
 
@@ -66,15 +83,15 @@ public class ExpertController {
      * Status of current recovery.
      */
     @RequestMapping(value = "/status/", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryStatus> status() {
+    public ResponseEntity<RecoveryStatusDTO> status() {
 
         logger.info("New recovery status request");
 
-        RecoveryStatus recoveryStatus = recoveryManager.getStatus();
+        RecoveryStatusDTO recoveryStatusDTO = recoveryService.getStatus();
 
-        if (recoveryStatus != null) {
+        if (recoveryStatusDTO != null) {
 
-            return ResponseEntity.ok(recoveryStatus);
+            return ResponseEntity.ok(recoveryStatusDTO);
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
@@ -86,7 +103,7 @@ public class ExpertController {
 
         logger.info("New recovery status request: " + id + ":" + step);
 
-        String status = recoveryManager.getStatus(id, step);
+        String status = recoveryService.getStatus(id, step);
         return status;
     }
 

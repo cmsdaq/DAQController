@@ -65,6 +65,8 @@ public class RecoveryRequestStep {
     @Transient
     Date finished;
 
+    Boolean issueTTCHardReset;
+
 
     /** How many times executed */
     private Integer timesExecuted;
@@ -147,6 +149,14 @@ public class RecoveryRequestStep {
 
     public void setHumanReadable(String humanReadable) {
         this.humanReadable = humanReadable;
+    }
+
+    public Boolean getIssueTTCHardReset() {
+        return issueTTCHardReset;
+    }
+
+    public void setIssueTTCHardReset(Boolean issueTtcHardReset) {
+        this.issueTTCHardReset = issueTtcHardReset;
     }
 
     @Override

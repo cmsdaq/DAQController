@@ -5,7 +5,7 @@
 
 	<groupId>ch.cern.cms.daq</groupId>
 	<artifactId>expert-controller</artifactId>
-	<version>1.1.1</version>
+	<version>1.2.0</version>
 	<packaging>war</packaging>
 
 	<name>expert-controller</name>
@@ -181,6 +181,18 @@
 			<groupId>javax</groupId>
 			<artifactId>javaee-web-api</artifactId>
 			<version>7.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
 		</dependency>
 
 	</dependencies>

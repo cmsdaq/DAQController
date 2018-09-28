@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.Date;
 
 /**
- * Request from expert
+ * POJO sent from DAQExpert in order to request a recovery.
+ *
+ * TODO: separate entity from DTO. Currently this class plays role of both of them
  */
 @Entity
 public class RecoveryRequest {
@@ -153,6 +155,14 @@ public class RecoveryRequest {
                 ", recoverySteps=" + recoverySteps +
                 ", problemTitle='" + problemTitle + '\'' +
                 ", problemDescription='" + problemDescription + '\'' +
+                '}';
+    }
+
+    public String getIdentifyingString(){
+        return "RecoveryRequest{" +
+                "id=" + id +
+                ", problemId=" + problemId +
+                ", problemTitle=" + problemTitle +
                 '}';
     }
 }

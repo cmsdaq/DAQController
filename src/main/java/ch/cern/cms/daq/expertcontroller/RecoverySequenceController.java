@@ -6,11 +6,10 @@ import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
 import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -28,15 +27,25 @@ public class RecoverySequenceController {
     private DashboardController dashboardController;
 
     @Autowired
-    private RecoveryManager recoveryManager;
+    private RecoveryService recoveryService;
 
     /**
      * Period of time to observe system in order to decide if recovery should be continued of finished
      */
-    public final static int observePeriod = 20000;
+
+    @Value("${observe.period}")
+    protected long observePeriod;
+
+    @Value("${approval.timeout}")
+    protected long approvalTimeout;
 
     private final static Logger logger = Logger.getLogger(RecoverySequenceController.class);
 
+    /**
+     * Scheduled tasks executor. For example it executes actions when observe period finishes, or when awaiting-approval
+     * timeouts. Only one action can be executed at the moment to assure correct transitions of FSM of recovery (hence
+     * thread pool size is 1)
+     */
     private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
 
     private RecoveryStatus currentStatus;
@@ -58,6 +67,7 @@ public class RecoverySequenceController {
         currentStatus = RecoveryStatus.AwaitingApproval;
 
         startRecoveryRecords("Waiting for approval", recoveryRequest.getProblemId(), recoveryRequest.getProblemTitle());
+        scheduleAvaitingApprovalTimeout(recoveryRequest.getProblemId());
     }
 
     public void preempt(RecoveryRequest recoveryRequest) {
@@ -73,6 +83,38 @@ public class RecoverySequenceController {
 
         /* Than start new recovery records */
         startRecoveryRecords("Waiting for approval", recoveryRequest.getProblemId(), recoveryRequest.getProblemTitle());
+
+        scheduleAvaitingApprovalTimeout(recoveryRequest.getProblemId());
+
+    }
+
+    private void scheduleAvaitingApprovalTimeout(final Long initiatingProblem) {
+
+
+        final RecoverySequenceController controller = this;
+        Runnable awaitingApprovalTimeoutJob = () -> {
+
+            logger.info("Scheduled job for " + initiatingProblem + " will now be executed");
+            /*
+             *Assumptions: there were no transitions since the time this job was scheduled.
+             * TODO: introduce a log of transitions and check if there was one
+             */
+            if (recoveryService.getCurrentRequestId() == null || initiatingProblem == recoveryService.getCurrentRequestId()) {
+                if (RecoveryStatus.AwaitingApproval == controller.getCurrentStatus()) {
+                    RecoveryRecord mainRecord = getMainRecord();
+                    if (mainRecord != null) {
+                        String description = mainRecord.getDescription();
+                        description = description == null ? "" : description + " ";
+                        mainRecord.setDescription(description + "Awaiting approval timeout.");
+                    }
+                    controller.end();
+                }
+            }
+
+        };
+
+        logger.info("Scheduling timeout job for Awaiting approval. It will be executed after " + approvalTimeout + " ms");
+        executor.schedule(awaitingApprovalTimeoutJob, approvalTimeout, TimeUnit.MILLISECONDS);
 
     }
 
@@ -94,7 +136,7 @@ public class RecoverySequenceController {
 
         currentStatus = RecoveryStatus.Idle;
         finishRecoveryRecords();
-        recoveryManager.endRecovery();
+        recoveryService.endRecovery();
 
     }
 
@@ -116,27 +158,52 @@ public class RecoverySequenceController {
 
     }
 
-    public void stepCompleted() {
+    public void stepCompleted(final Long initiatingProblem) {
 
         currentStatus = RecoveryStatus.Observe;
 
-        finishAndStartNewCurrent("Observing ..", null, "Observing system for for response " + observePeriod + " ms");
+        logger.info("Recovery of step for problem " +initiatingProblem+ " has completed. Will now observe the system for response for "+observePeriod+"ms.");
+
 
         final RecoverySequenceController controller = this;
 
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
 
+        Runnable handleObservePeriodFinished = () -> {
+
+            if (!recoveryService.receivedPreemption(initiatingProblem)) {
+                /* Recovery will be finished if nothing happens during observe period - no other requests from Expert - controller still in observe period, but:
+                 * - condition has been finished before
+                 * - condition has not been finished before
+                 */
                 if (RecoveryStatus.Observe == controller.getCurrentStatus()) {
-                    logger.info("Nothing happened during observe period, finishing condition");
-                    controller.end();
+
+                    logger.info("No recovery request received during observe period and... ");
+
+                    if (!recoveryService.getOngoingProblems().contains(initiatingProblem)) {
+                        logger.info("... causing problem is no longer active - finishing the recovery");
+                        controller.end();
+                    } else {
+                        logger.info("... causing problem (" + initiatingProblem + ") is still on unfinished list (" + recoveryService.getOngoingProblems() + ") - the recovery action didn't change anything - continue as the same problem");
+                        //controller.continueSame(recoveryRequest);
+                        recoveryService.continueSameProblem();
+                    }
+
                 } else {
-                    logger.info("Other thing happend during observe period");
+                    logger.info("Some recovery request received during observe period");
                 }
+            } else {
+                logger.info("Ignore proceeding steps of problem " + initiatingProblem + ", it was preempted during observe period");
             }
+
         };
-        executor.schedule(runnable, observePeriod, TimeUnit.MILLISECONDS);
+
+
+        if(!recoveryService.receivedPreemption(initiatingProblem)) {
+            finishAndStartNewCurrent("Observing ..", null, "Observing system for for response " + observePeriod + " ms");
+            executor.schedule(handleObservePeriodFinished, observePeriod, TimeUnit.MILLISECONDS);
+        } else{
+            logger.info("Ignore proceeding steps of problem " + initiatingProblem + ", it was preempted before observe period started");
+        }
 
     }
 
@@ -160,6 +227,8 @@ public class RecoverySequenceController {
 
     private void startRecoveryRecords(String currentTitle, Long problemId, String problemTitle){
 
+        logger.info("Creating new recovery records");
+
         Date requestReceivedDate = new Date();
         mainRecord = new RecoveryRecord();
         current = new RecoveryRecord();
@@ -175,6 +244,8 @@ public class RecoverySequenceController {
     }
 
     private void finishAndStartNewCurrent(String currentTitle, Long newConditionId, String currentDescription){
+
+        logger.info("Finishing and starting new current records");
 
         if(newConditionId != null) {
             mainRecord.getRelatedConditions().add(newConditionId);
@@ -192,7 +263,6 @@ public class RecoverySequenceController {
         current.setDescription(currentDescription);
         recoveryRecordRepository.save(current);
     }
-
 
 }
 
