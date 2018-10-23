@@ -1,20 +1,19 @@
 package ch.cern.cms.daq.expertcontroller.controller;
 
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRecordDTO;
 import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestDTO;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestStepDTO;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequestStep;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryResponse;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryStatusDTO;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
 import ch.cern.cms.daq.expertcontroller.service.ProbeRecoverySender;
 import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryResponse;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryStatusDTO;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
 import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -22,8 +21,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.lang.reflect.Type;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -127,11 +126,19 @@ public class ExpertController {
 
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/records")
-    public Collection<RecoveryRecord> getRecoveryRecords(@RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start, @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
+    public Collection<RecoveryRecordDTO> getRecoveryRecords(@RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start, @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
         logger.info("Requested records between: " + start + " and  " + end);
         List<RecoveryRecord> result = recoveryRecordRepository.findBetween(Date.from(start.toInstant()), Date.from(end.toInstant()));
-        logger.debug("Result: " + result);
-        return result;
+
+
+        ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration()
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+        Type listType = new TypeToken<List<RecoveryRecordDTO>>() {}.getType();
+        List<RecoveryRecordDTO> resultDTO = modelMapper.map(result, listType);
+
+        logger.debug("Result: " + resultDTO);
+        return resultDTO;
     }
 
     @RequestMapping(value = "/", method = RequestMethod.GET)
