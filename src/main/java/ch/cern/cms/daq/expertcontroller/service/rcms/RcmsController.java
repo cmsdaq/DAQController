@@ -1,8 +1,8 @@
-package ch.cern.cms.daq.expertcontroller.rcmsController;
+package ch.cern.cms.daq.expertcontroller.service.rcms;
 
-import ch.cern.cms.daq.expertcontroller.RecoveryService;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
+import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequestStep;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-@Component("rcmsController")
+@Component("rcms")
 public class RcmsController {
 
     private static Logger logger = Logger.getLogger(RcmsController.class);

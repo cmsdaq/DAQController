@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.api;
+package ch.cern.cms.daq.expertcontroller.entity;
 
 
 

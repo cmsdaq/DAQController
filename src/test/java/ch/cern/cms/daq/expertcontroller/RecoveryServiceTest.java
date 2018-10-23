@@ -1,6 +1,7 @@
 package ch.cern.cms.daq.expertcontroller;
 
-import ch.cern.cms.daq.expertcontroller.websocket.ApprovalResponse;
+import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
+import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

@@ -1,14 +1,14 @@
-package ch.cern.cms.daq.expertcontroller;
+package ch.cern.cms.daq.expertcontroller.service;
 
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryResponse;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryJobRepository;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.rcmsController.LV0AutomatorControlException;
-import ch.cern.cms.daq.expertcontroller.rcmsController.RcmsController;
-import ch.cern.cms.daq.expertcontroller.websocket.*;
+import ch.cern.cms.daq.expertcontroller.controller.DashboardController;
+import ch.cern.cms.daq.expertcontroller.datatransfer.*;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequestStep;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryJobRepository;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
+import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
+import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -211,7 +211,7 @@ public class RecoveryService {
                 logger.debug("Currently executed recovery will be interrupted");
                 result = "acceptedWithPreemption";
 
-            } else if (request.isSameProblem() && recoverySequenceController.getCurrentStatus() == ch.cern.cms.daq.expertcontroller.RecoveryStatus.Observe) {
+            } else if (request.isSameProblem() && recoverySequenceController.getCurrentStatus() == RecoveryStatus.Observe) {
                 logger.debug("Currently recovery continues with next condition");
                 result = "acceptedToContinue";
             } else if (request.isWithPostponement()) {
@@ -419,7 +419,7 @@ public class RecoveryService {
         if (recoveryId == null) {
             throw new IllegalArgumentException("The 'recoveryId' parameter must not be null or empty");
         }
-        if (approvalResponse.isApproved() == null) {
+        if (approvalResponse.getApproved() == null) {
             throw new IllegalArgumentException("The 'approved' parameter must not be null or empty");
         }
 
@@ -427,7 +427,7 @@ public class RecoveryService {
         // decision regarding single step
         if (step != null) {
 
-            if (approvalResponse.isApproved()) {
+            if (approvalResponse.getApproved()) {
                 logger.info("Operator approved recovery step " + step + " of recovery procedure " + recoveryId);
                 approvedStep(recoveryId, step);
                 return "Recovery step successfully approved";
@@ -441,7 +441,7 @@ public class RecoveryService {
 
         // whole recovery procedure decision
         else {
-            if (approvalResponse.isApproved()) {
+            if (approvalResponse.getApproved()) {
 
                 logger.info("Operator approved whole recovery procedure " + recoveryId);
                 //TODO handle

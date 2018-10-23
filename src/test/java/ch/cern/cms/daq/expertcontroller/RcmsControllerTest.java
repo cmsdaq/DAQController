@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller;
 
-import ch.cern.cms.daq.expertcontroller.rcmsController.RcmsController;
+import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
 import org.junit.Test;
 
 public class RcmsControllerTest {

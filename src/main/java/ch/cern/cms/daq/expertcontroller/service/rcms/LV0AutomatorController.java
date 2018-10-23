@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.rcmsController;
+package ch.cern.cms.daq.expertcontroller.service.rcms;
 
 import rcms.fm.fw.parameter.FunctionManagerParameter;
 import rcms.fm.fw.parameter.Parameter;
@@ -6,12 +6,9 @@ import rcms.fm.fw.parameter.ParameterException;
 import rcms.fm.fw.parameter.bean.FunctionManagerParameterBean;
 import rcms.fm.fw.parameter.type.*;
 import rcms.fm.fw.parameter.util.ParameterUtil;
-import rcms.fm.fw.service.parameter.ParameterRelayRemote;
 import rcms.fm.fw.service.parameter.ParameterServiceException;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**

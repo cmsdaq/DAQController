@@ -1,10 +1,12 @@
 package ch.cern.cms.daq.expertcontroller;
 
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.rcmsController.LV0AutomatorControlException;
-import ch.cern.cms.daq.expertcontroller.rcmsController.LV0AutomatorController;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
+import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
+import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorController;
+import ch.cern.cms.daq.expertcontroller.service.RecoverySequenceController;
+import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;

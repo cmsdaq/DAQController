@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.websocket;
+package ch.cern.cms.daq.expertcontroller.datatransfer;
 
 import lombok.Data;
 

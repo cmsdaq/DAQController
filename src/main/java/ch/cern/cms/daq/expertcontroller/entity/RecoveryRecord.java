@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.persistence;
+package ch.cern.cms.daq.expertcontroller.entity;
 
 import javax.persistence.*;
 import java.util.Date;

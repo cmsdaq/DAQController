@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller;
+package ch.cern.cms.daq.expertcontroller.service;
 
 public enum RecoveryStatus {
 

@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.rcmsController;
+package ch.cern.cms.daq.expertcontroller.service.rcms;
 
 import rcms.fm.fw.parameter.FunctionManagerParameter;
 import rcms.fm.fw.parameter.bean.FunctionManagerParameterBean;

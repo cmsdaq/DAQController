@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller;
 
-import ch.cern.cms.daq.expertcontroller.rcmsController.RcmsController;
+import ch.cern.cms.daq.expertcontroller.service.ProbeRecoverySender;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

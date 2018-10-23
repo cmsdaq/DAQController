@@ -1,12 +1,20 @@
-package ch.cern.cms.daq.expertcontroller;
+package ch.cern.cms.daq.expertcontroller.controller;
 
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryResponse;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.websocket.RecoveryStatusDTO;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestDTO;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestStepDTO;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequestStep;
+import ch.cern.cms.daq.expertcontroller.service.ProbeRecoverySender;
+import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryResponse;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryStatusDTO;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,11 +23,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
 
+/**
+ * Main application controller
+ */
 @RestController
 public class ExpertController {
 
@@ -38,14 +50,20 @@ public class ExpertController {
     private String message;
 
     @RequestMapping(value = "/recover", method = RequestMethod.POST)
-    public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequest request) {
+    public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequestDTO request) {
 
         logger.info("New recovery request: " + request.getProblemDescription() + " problem id: " + request.getProblemId());
 
         if (request.getRecoverySteps() == null || request.getRecoverySteps().size() == 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); //TODO might be useful to describe why bad request
         }
-        RecoveryResponse response = recoveryService.submitRecoveryRequest(request);
+
+        ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration()
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+        RecoveryRequest recoveryRequest = modelMapper.map(request, RecoveryRequest.class);
+
+        RecoveryResponse response = recoveryService.submitRecoveryRequest(recoveryRequest);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

@@ -1,10 +1,13 @@
-package ch.cern.cms.daq.expertcontroller;
+package ch.cern.cms.daq.expertcontroller.service;
 
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequestStep;
-import ch.cern.cms.daq.expertcontroller.api.RecoveryResponse;
-import ch.cern.cms.daq.expertcontroller.websocket.ApprovalResponse;
-import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
+import ch.cern.cms.daq.expertcontroller.controller.ExpertController;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestDTO;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestStepDTO;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequestStep;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryResponse;
+import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
+import ch.cern.cms.daq.expertcontroller.controller.DashboardController;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +35,7 @@ public class ProbeRecoverySender {
 
     public void issueTestRecoverySequence(String subsystem) {
 
-        RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest(subsystem);
+        RecoveryRequestDTO recoveryRequest1 = generateEmptyRecoveryRequest(subsystem);
         recoveryRequest1.getRecoverySteps().iterator().next().setIssueTTCHardReset(true);
         logger.info("Sending TTC Hard Reset reset");
         sendRequestAndApprove(recoveryRequest1);
@@ -44,7 +47,7 @@ public class ProbeRecoverySender {
             e.printStackTrace();
         }
 
-        RecoveryRequest recoveryRequest2 = generateEmptyRecoveryRequest(subsystem);
+        RecoveryRequestDTO recoveryRequest2 = generateEmptyRecoveryRequest(subsystem);
         if(subsystem != null) {
             recoveryRequest2.getRecoverySteps().iterator().next().getGreenRecycle().add(subsystem);
         }
@@ -56,7 +59,7 @@ public class ProbeRecoverySender {
 
     }
 
-    private void sendRequestAndApprove(RecoveryRequest recoveryRequest) {
+    private void sendRequestAndApprove(RecoveryRequestDTO recoveryRequest) {
         ResponseEntity<RecoveryResponse> response = expertController.requestRecovery(recoveryRequest);
         Long recovery1Id = response.getBody().getRecoveryProcedureId();
 
@@ -84,23 +87,25 @@ public class ProbeRecoverySender {
 
     }
 
-    private RecoveryRequest generateEmptyRecoveryRequest(String subsystem) {
+    private RecoveryRequestDTO generateEmptyRecoveryRequest(String subsystem) {
 
         final Long id = problemId++;
         String problemTitle = "Probe problem " + id;
         if(subsystem != null){
             problemTitle += " for subsystem " + subsystem;
         }
-        RecoveryRequest recoveryRequest = new RecoveryRequest();
-        recoveryRequest.setProblemTitle(problemTitle);
-        recoveryRequest.setProblemId(id);
-        recoveryRequest.setRecoverySteps(new ArrayList<>());
+        RecoveryRequestDTO recoveryRequest = RecoveryRequestDTO.builder()
+                .problemTitle(problemTitle)
+                .problemId(id)
+                .recoverySteps(new ArrayList<>())
+                .build();
 
-        RecoveryRequestStep step1 = new RecoveryRequestStep();
-        step1.setGreenRecycle(new HashSet<>());
-        step1.setRedRecycle(new HashSet<>());
-        step1.setFault(new HashSet<>());
-        step1.setReset(new HashSet<>());
+        RecoveryRequestStepDTO step1 = RecoveryRequestStepDTO.builder()
+                .redRecycle(new HashSet<>())
+                .greenRecycle(new HashSet<>())
+                .fault(new HashSet<>())
+                .reset(new HashSet<>())
+                .build();
 
         recoveryRequest.getRecoverySteps().add(step1);
 

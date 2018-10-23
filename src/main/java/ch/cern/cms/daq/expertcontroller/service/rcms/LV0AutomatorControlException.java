@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.rcmsController;
+package ch.cern.cms.daq.expertcontroller.service.rcms;
 
 public class LV0AutomatorControlException extends Exception {
 

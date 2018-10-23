@@ -1,11 +1,9 @@
 package ch.cern.cms.daq.expertcontroller;
 
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 
 import java.util.Calendar;
 import java.util.Date;

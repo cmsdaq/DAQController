@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.websocket;
+package ch.cern.cms.daq.expertcontroller.controller;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

@@ -1,6 +1,9 @@
-package ch.cern.cms.daq.expertcontroller.websocket;
+package ch.cern.cms.daq.expertcontroller.controller;
 
-import ch.cern.cms.daq.expertcontroller.RecoveryService;
+import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
+import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryStatusDTO;
+import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -22,7 +25,7 @@ public class DashboardController {
     private SimpMessagingTemplate template;
 
     /**
-     * Method called by
+     * Called by the dashboard client on approval decision
      * @param approvalResponse
      * @return
      */

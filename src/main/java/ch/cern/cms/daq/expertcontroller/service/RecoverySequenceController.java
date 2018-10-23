@@ -1,9 +1,9 @@
-package ch.cern.cms.daq.expertcontroller;
+package ch.cern.cms.daq.expertcontroller.service;
 
-import ch.cern.cms.daq.expertcontroller.api.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.persistence.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.websocket.DashboardController;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
+import ch.cern.cms.daq.expertcontroller.controller.DashboardController;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

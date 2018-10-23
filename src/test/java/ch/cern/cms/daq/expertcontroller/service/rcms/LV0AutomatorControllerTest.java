@@ -1,4 +1,4 @@
-package ch.cern.cms.daq.expertcontroller.rcmsController;
+package ch.cern.cms.daq.expertcontroller.service.rcms;
 
 import java.util.HashMap;
 import java.util.Map;

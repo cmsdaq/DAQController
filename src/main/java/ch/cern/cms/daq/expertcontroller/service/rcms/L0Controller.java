@@ -1,6 +1,5 @@
-package ch.cern.cms.daq.expertcontroller.rcmsController;
+package ch.cern.cms.daq.expertcontroller.service.rcms;
 
-import rcms.fm.fw.parameter.bean.FunctionManagerParameterBean;
 import rcms.fm.fw.service.command.CommandRelayRemote;
 import rcms.fm.fw.service.command.CommandServiceException;
 import rcms.statemachine.definition.bean.CommandBean;
