@@ -29,7 +29,7 @@ import java.util.List;
 
 
 /**
- * Main application controller
+ * Main application controller allowing communication with other services
  */
 @RestController
 public class ExpertController {
@@ -48,6 +48,13 @@ public class ExpertController {
     @Value("${controller.message}")
     private String message;
 
+    /**
+     * Defines endpoint to request recovery
+     *
+     * @param request data transfer object describing recovery request
+     * @return response to the recovery request, includes decision whether recovery request has been accepted or
+     * rejected
+     */
     @RequestMapping(value = "/recover", method = RequestMethod.POST)
     public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequestDTO request) {
 
@@ -80,6 +87,12 @@ public class ExpertController {
         recoveryService.finished(id);
     }
 
+    /**
+     * Endpoint to schedule test recovery
+     *
+     * @param subsystem subsystem to which test recovery will be applied
+     * @return confirmation message
+     */
     @RequestMapping(value = "/fire-test-recovery", method = RequestMethod.GET)
     public String testRecovery(@RequestParam(value = "subsystem", required = false) String subsystem) {
         logger.info("Issuing test recovery sequence");
@@ -89,7 +102,10 @@ public class ExpertController {
 
 
     /**
-     * Status of recovery. Id corresponds to Recovery record. TODO: make it possible to use this API with and without
+     * Endpoint to get status of a given recovery. Id corresponds to Recovery record.
+     *
+     * @param id id of the recovery record
+     * @returns data transfer object describing status of given recovery
      */
     @RequestMapping(value = "/status/{id}/", method = RequestMethod.GET)
     public ResponseEntity<RecoveryStatusDTO> status(@PathVariable Long id) {
@@ -97,7 +113,9 @@ public class ExpertController {
     }
 
     /**
-     * Status of current recovery.
+     * Endpoint to get status of a given recovery.
+     *
+     * @returns data transfer object describing status of current recovery
      */
     @RequestMapping(value = "/status/", method = RequestMethod.GET)
     public ResponseEntity<RecoveryStatusDTO> status() {
@@ -114,6 +132,7 @@ public class ExpertController {
         }
     }
 
+
     @Deprecated
     @RequestMapping(value = "/status/{id}/{step}/", method = RequestMethod.GET)
     public String status(@PathVariable Long id, @PathVariable Integer step) {
@@ -124,9 +143,18 @@ public class ExpertController {
         return status;
     }
 
+    /**
+     * Endpoint to retrieve recovery records within given time span
+     *
+     * @param start beginning of requested time span
+     * @param end   end of requested time span
+     * @return data transfer objects describing recovery records within given time span
+     */
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/records")
-    public Collection<RecoveryRecordDTO> getRecoveryRecords(@RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start, @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
+    public Collection<RecoveryRecordDTO> getRecoveryRecords(
+            @RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start,
+            @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
         logger.info("Requested records between: " + start + " and  " + end);
         List<RecoveryRecord> result = recoveryRecordRepository.findBetween(Date.from(start.toInstant()), Date.from(end.toInstant()));
 
@@ -134,13 +162,19 @@ public class ExpertController {
         ModelMapper modelMapper = new ModelMapper();
         modelMapper.getConfiguration()
                 .setMatchingStrategy(MatchingStrategies.STRICT);
-        Type listType = new TypeToken<List<RecoveryRecordDTO>>() {}.getType();
+        Type listType = new TypeToken<List<RecoveryRecordDTO>>() {
+        }.getType();
         List<RecoveryRecordDTO> resultDTO = modelMapper.map(result, listType);
 
         logger.debug("Result: " + resultDTO);
         return resultDTO;
     }
 
+    /**
+     * Endpont to get current instance description
+     *
+     * @return current instance description
+     */
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public String main() {
         return "Controller up and running: " + message;
