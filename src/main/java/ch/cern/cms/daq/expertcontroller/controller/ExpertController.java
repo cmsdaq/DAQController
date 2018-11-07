@@ -1,19 +1,14 @@
 package ch.cern.cms.daq.expertcontroller.controller;
 
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRecordDTO;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestDTO;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryProcedureStatus;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRecord;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryResponse;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryStatusDTO;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
+import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import ch.cern.cms.daq.expertcontroller.service.ProbeRecoverySender;
-import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
+import ch.cern.cms.daq.expertcontroller.service.RecoveryRecordService;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeToken;
-import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,10 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.lang.reflect.Type;
 import java.time.ZonedDateTime;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 
 
@@ -37,10 +30,10 @@ public class ExpertController {
     Logger logger = Logger.getLogger(ExpertController.class);
 
     @Autowired
-    RecoveryService recoveryService;
+    IRecoveryService recoveryService;
 
     @Autowired
-    RecoveryRecordRepository recoveryRecordRepository;
+    RecoveryRecordService recoveryRecordService;
 
     @Autowired
     ProbeRecoverySender probeRecoverySender;
@@ -56,7 +49,7 @@ public class ExpertController {
      * rejected
      */
     @RequestMapping(value = "/recover", method = RequestMethod.POST)
-    public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequestDTO request) {
+    public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequest request) {
 
         logger.info("New recovery request: " + request.getProblemDescription() + " problem id: " + request.getProblemId());
 
@@ -64,12 +57,7 @@ public class ExpertController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); //TODO might be useful to describe why bad request
         }
 
-        ModelMapper modelMapper = new ModelMapper();
-        modelMapper.getConfiguration()
-                .setMatchingStrategy(MatchingStrategies.STRICT);
-        RecoveryRequest recoveryRequest = modelMapper.map(request, RecoveryRequest.class);
-
-        RecoveryResponse response = recoveryService.submitRecoveryRequest(recoveryRequest);
+        RecoveryResponse response = recoveryService.submitRecoveryRequest(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -84,7 +72,7 @@ public class ExpertController {
     @RequestMapping(value = "/finished", method = RequestMethod.POST)
     public void conditionFinished(@RequestBody Long id) {
         logger.info("Finished signal received: " + id);
-        recoveryService.finished(id);
+        //recoveryService.finished(id);
     }
 
     /**
@@ -102,31 +90,31 @@ public class ExpertController {
 
 
     /**
-     * Endpoint to get status of a given recovery. Id corresponds to Recovery record.
+     * Endpoint to get acceptanceDecision of a given recovery. Id corresponds to Recovery record.
      *
      * @param id id of the recovery record
-     * @returns data transfer object describing status of given recovery
+     * @returns data transfer object describing acceptanceDecision of given recovery
      */
-    @RequestMapping(value = "/status/{id}/", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryStatusDTO> status(@PathVariable Long id) {
+    @RequestMapping(value = "/acceptanceDecision/{id}/", method = RequestMethod.GET)
+    public ResponseEntity<RecoveryProcedureStatus> status(@PathVariable Long id) {
         throw new NotYetImplementedException();
     }
 
     /**
-     * Endpoint to get status of a given recovery.
+     * Endpoint to get acceptanceDecision of a given recovery.
      *
-     * @returns data transfer object describing status of current recovery
+     * @returns data transfer object describing acceptanceDecision of current recovery
      */
-    @RequestMapping(value = "/status/", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryStatusDTO> status() {
+    @RequestMapping(value = "/acceptanceDecision/", method = RequestMethod.GET)
+    public ResponseEntity<RecoveryProcedureStatus> status() {
 
-        logger.info("New recovery status request");
+        logger.info("New recovery acceptanceDecision request");
 
-        RecoveryStatusDTO recoveryStatusDTO = recoveryService.getStatus();
+        RecoveryProcedureStatus recoveryProcedureStatus = null;//recoveryService.getAcceptanceDecision();
 
-        if (recoveryStatusDTO != null) {
+        if (recoveryProcedureStatus != null) {
 
-            return ResponseEntity.ok(recoveryStatusDTO);
+            return ResponseEntity.ok(recoveryProcedureStatus);
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
@@ -134,12 +122,12 @@ public class ExpertController {
 
 
     @Deprecated
-    @RequestMapping(value = "/status/{id}/{step}/", method = RequestMethod.GET)
+    @RequestMapping(value = "/acceptanceDecision/{id}/{step}/", method = RequestMethod.GET)
     public String status(@PathVariable Long id, @PathVariable Integer step) {
 
-        logger.info("New recovery status request: " + id + ":" + step);
+        logger.info("New recovery acceptanceDecision request: " + id + ":" + step);
 
-        String status = recoveryService.getStatus(id, step);
+        String status = null;// recoveryService.getAcceptanceDecision(id, step);
         return status;
     }
 
@@ -152,22 +140,14 @@ public class ExpertController {
      */
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/records")
-    public Collection<RecoveryRecordDTO> getRecoveryRecords(
+    public Collection<RecoveryRecord> getRecoveryRecords(
             @RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start,
             @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
         logger.info("Requested records between: " + start + " and  " + end);
-        List<RecoveryRecord> result = recoveryRecordRepository.findBetween(Date.from(start.toInstant()), Date.from(end.toInstant()));
+        List<RecoveryRecord> result = recoveryRecordService.getRecords(start, end);
 
-
-        ModelMapper modelMapper = new ModelMapper();
-        modelMapper.getConfiguration()
-                .setMatchingStrategy(MatchingStrategies.STRICT);
-        Type listType = new TypeToken<List<RecoveryRecordDTO>>() {
-        }.getType();
-        List<RecoveryRecordDTO> resultDTO = modelMapper.map(result, listType);
-
-        logger.debug("Result: " + resultDTO);
-        return resultDTO;
+        logger.debug("Result: " + result);
+        return result;
     }
 
     /**

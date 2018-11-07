@@ -2,14 +2,12 @@ package ch.cern.cms.daq.expertcontroller;
 
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestDTO;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestStepDTO;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryRequestStep;
-import ch.cern.cms.daq.expertcontroller.repository.RecoveryRecordRepository;
-import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequest;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestStep;
+import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import org.junit.*;
@@ -50,10 +48,12 @@ import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.Matchers.*;
 
 
-//TODO: add test when condition finishes itself, add test when interrupt from LV0
+//TODO: add oneRequestTEset when condition finishes itself, add oneRequestTEset when interrupt from LV0
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@Ignore
+//TODO: get inspiration from this tests
 public class ExpertControllerApplicationTests {
 
 
@@ -76,10 +76,7 @@ public class ExpertControllerApplicationTests {
     private RcmsController rcmsController;
 
     @Autowired
-    private RecoveryRecordRepository recoveryRecordRepository;
-
-    @Autowired
-    private RecoveryService recoveryService;
+    private IRecoveryService recoveryService;
 
 
     @BeforeClass
@@ -110,7 +107,7 @@ public class ExpertControllerApplicationTests {
 
         stompSession.subscribe(SUBSCRIBE_REQUEST, new DefaultStompFrameHandler());
 
-        recoveryService.getOngoingProblems().clear();
+        //recoveryService.getOngoingProblems().clear();
 
         //Thread.sleep(15000);
 
@@ -153,15 +150,15 @@ public class ExpertControllerApplicationTests {
         cal.add(Calendar.YEAR, -1);
         String start = DatatypeConverter.printDateTime(cal);
 
-        System.out.println("All: " + recoveryRecordRepository.findAll());
+        //System.out.println("All: " + recoveryRecordRepository.findAll());
 
         System.out.println("Requesting: " + start + "-" + end);
-        RecoveryRequestDTO r = RecoveryRequestDTO.builder().problemId(10L).recoverySteps(new ArrayList<>()).build();
-        r.getRecoverySteps().add(RecoveryRequestStepDTO.builder().build());
+        RecoveryRequest r = RecoveryRequest.builder().problemId(10L).recoverySteps(new ArrayList<>()).build();
+        r.getRecoverySteps().add(RecoveryRequestStep.builder().build());
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("accepted"),
+                        "acceptanceDecision", equalTo("accepted"),
                         "recoveryId", equalTo(1));
 
         given().queryParam("start", start)
@@ -186,11 +183,11 @@ public class ExpertControllerApplicationTests {
         cal.add(Calendar.YEAR, -1);
         String start = DatatypeConverter.printDateTime(cal);
 
-        RecoveryRequestDTO r = generateRecoveryRequest(10L);
+        RecoveryRequest r = generateRecoveryRequest(10L);
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("accepted"),
+                        "acceptanceDecision", equalTo("accepted"),
                         "recoveryId", equalTo(1));
 
         given().queryParam("start", start)
@@ -200,19 +197,19 @@ public class ExpertControllerApplicationTests {
                 .body("name", hasItem(is(waitinMessage)));
 
 
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10),
-                        "status", equalTo("awaiting approval"));
+                        "acceptanceDecision", equalTo("awaiting approval"));
 
         given().header(jsonHeader).body(10L).post("/finished").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()));
 
 
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10),
-                        "status", equalTo("finished"));
+                        "acceptanceDecision", equalTo("finished"));
 
 
         Thread.sleep(2000);
@@ -232,12 +229,12 @@ public class ExpertControllerApplicationTests {
         String start = DatatypeConverter.printDateTime(cal);
 
 
-        RecoveryRequestDTO r = generateRecoveryRequest(10L);
+        RecoveryRequest r = generateRecoveryRequest(10L);
 
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("accepted"),
+                        "acceptanceDecision", equalTo("accepted"),
                         "recoveryId", equalTo(1));
 
 
@@ -269,13 +266,13 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)));
 
-        RecoveryRequestDTO r2 = generateRecoveryRequest(11L);
+        RecoveryRequest r2 = generateRecoveryRequest(11L);
         r2.setSameProblem(true);
 
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("acceptedToContinue"),
+                        "acceptanceDecision", equalTo("acceptedToContinue"),
                         "recoveryId", equalTo(2));
 
         given().queryParam("start", start)
@@ -284,28 +281,28 @@ public class ExpertControllerApplicationTests {
                 .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage)));
 
 
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10, 11),
-                        "status", equalTo("acceptedToContinue"));
+                        "acceptanceDecision", equalTo("acceptedToContinue"));
 
         given().header(jsonHeader).body(11L).post("/finished").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()));
 
 
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10, 11),
-                        "status", equalTo("finished"));
+                        "acceptanceDecision", equalTo("finished"));
 
 
         Thread.sleep(2000);
     }
 
-    private RecoveryRequestDTO generateRecoveryRequest(Long problemId) {
-        RecoveryRequestDTO r = RecoveryRequestDTO.builder().
+    private RecoveryRequest generateRecoveryRequest(Long problemId) {
+        RecoveryRequest r = RecoveryRequest.builder().
                 problemId(problemId).recoverySteps(new ArrayList<>()).build();
-        r.getRecoverySteps().add(RecoveryRequestStepDTO.builder().build());
+        r.getRecoverySteps().add(RecoveryRequestStep.builder().build());
         return r;
     }
 
@@ -320,7 +317,7 @@ public class ExpertControllerApplicationTests {
     @Test
     public void twoRequests() throws InterruptedException {
 
-        RecoveryRequestDTO r = generateRecoveryRequest(10L);
+        RecoveryRequest r = generateRecoveryRequest(10L);
 
 
         /*
@@ -329,14 +326,14 @@ public class ExpertControllerApplicationTests {
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("accepted"),
+                        "acceptanceDecision", equalTo("accepted"),
                         "recoveryId", equalTo(1));
 
-        /* Check status of current recovery*/
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        /* Check acceptanceDecision of current recovery*/
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10),
-                        "status", equalTo("awaiting approval"));
+                        "acceptanceDecision", equalTo("awaiting approval"));
 
 
         /* Check whether recovery records are in database */
@@ -358,38 +355,38 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)));
 
-        /* Check current status*/
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        /* Check current acceptanceDecision*/
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10),
-                        //TODO:"status", equalTo("awaiting approval"),
-                        "automatedSteps.find { it.stepIndex == 0 }.status", equalTo("recovering"),
-                        "automatedSteps.find { it.stepIndex == 0 }.started", notNullValue(),
-                        "automatedSteps.find { it.stepIndex == 0 }.finished", nullValue(),
-                        "automatedSteps.find { it.stepIndex == 0 }.timesExecuted", is(0));
+                        //TODO:"acceptanceDecision", equalTo("awaiting approval"),
+                        "jobStatuses.find { it.stepIndex == 0 }.acceptanceDecision", equalTo("recovering"),
+                        "jobStatuses.find { it.stepIndex == 0 }.started", notNullValue(),
+                        "jobStatuses.find { it.stepIndex == 0 }.finished", nullValue(),
+                        "jobStatuses.find { it.stepIndex == 0 }.timesExecuted", is(0));
 
 
         // The second one is not accepted, the other is being processed
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("rejected"),
+                        "acceptanceDecision", equalTo("rejected"),
                         "recoveryId", equalTo(2),
                         "rejectedDueToConditionId", equalTo(10));
 
-//        given().get("/status/2/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
-//                .body("status", equalTo("rejected"));
+//        given().get("/acceptanceDecision/2/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+//                .body("acceptanceDecision", equalTo("rejected"));
 
 
         Thread.sleep(timeToExecute / 2 + observePeriod / 2); // end up in the middle of observing period
 
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10),
-                        "automatedSteps.find { it.stepIndex == 0 }.status", equalTo("finished"),
-                        "automatedSteps.find { it.stepIndex == 0 }.started", notNullValue(),
-                        "automatedSteps.find { it.stepIndex == 0 }.finished", notNullValue(),
-                        "automatedSteps.find { it.stepIndex == 0 }.timesExecuted", is(1));
+                        "jobStatuses.find { it.stepIndex == 0 }.acceptanceDecision", equalTo("finished"),
+                        "jobStatuses.find { it.stepIndex == 0 }.started", notNullValue(),
+                        "jobStatuses.find { it.stepIndex == 0 }.finished", notNullValue(),
+                        "jobStatuses.find { it.stepIndex == 0 }.timesExecuted", is(1));
 
         given().queryParam("start", "2000-01-01T00:00:00Z")
                 .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
@@ -422,59 +419,59 @@ public class ExpertControllerApplicationTests {
     @Test
     public void preemptionTest() throws InterruptedException {
 
-        System.out.println("Preemption test");
+        System.out.println("Preemption oneRequestTEset");
 
 
         //System.out.println(recoverySequenceController);
         System.out.println(recoveryService);
 
-        Assert.assertEquals("Nothing before", 0, recoveryService.getOngoingProblems().size());
+        //Assert.assertEquals("Nothing before", 0, recoveryService.getOngoingProblems().size());
 
-        RecoveryRequestDTO r = generateRecoveryRequest(10L);
+        RecoveryRequest r = generateRecoveryRequest(10L);
 
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("accepted"),
+                        "acceptanceDecision", equalTo("accepted"),
                         "recoveryId", equalTo(1));
 
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(10),
-                        "status", equalTo("awaiting approval"));
+                        "acceptanceDecision", equalTo("awaiting approval"));
 
-        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
+        //Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
-        RecoveryRequestDTO r2 = generateRecoveryRequest(11L);
+        RecoveryRequest r2 = generateRecoveryRequest(11L);
 
 
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("rejected"),
+                        "acceptanceDecision", equalTo("rejected"),
                         "recoveryId", equalTo(2));
 
-//        given().get("/status/2/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+//        given().get("/acceptanceDecision/2/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
 //                .body(
 //                        "problemId", equalTo(11),
-//                        "status", equalTo("rejected"));
+//                        "acceptanceDecision", equalTo("rejected"));
 
         r2.setWithInterrupt(true);
 
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("acceptedWithPreemption"),
+                        "acceptanceDecision", equalTo("acceptedWithPreemption"),
                         "recoveryId", equalTo(3)
                 );
 
-        given().get("/status/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "conditionIds", contains(11),
-                        "status", equalTo("awaiting approval"));
+                        "acceptanceDecision", equalTo("awaiting approval"));
 
-        // TODO: support status by id
-//        given().get("/status/1/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        // TODO: support acceptanceDecision by id
+//        given().get("/acceptanceDecision/1/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
 //                .body(
 //                        "conditionIds", contains(10));
 
@@ -484,7 +481,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body("name", contains(startsWith(recoveryPrefix), is(is(waitinMessage)), startsWith(recoveryPrefix), is(is(waitinMessage))));
 
-        Assert.assertEquals(2, recoveryService.getOngoingProblems().size());
+        //Assert.assertEquals(2, recoveryService.getOngoingProblems().size());
 
         ApprovalResponse approvalResponse = generateApprovalResponse(3L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
@@ -513,14 +510,14 @@ public class ExpertControllerApplicationTests {
                 .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), notNullValue(), nullValue()));
 
 
-        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
+        //Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
         System.out.println("+++++++++++");
         Thread.sleep(observePeriod); // after 15 seconds the observingMessage will finish
 
 
         System.out.println("===========");
-        Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
+        //Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
 
         /* 1st recoveyr request will be preempted by 2nd request, after it's finished, 1st will be picked up again as it was not finished */
         given().queryParam("start", "2000-01-01T00:00:00Z")
@@ -535,13 +532,13 @@ public class ExpertControllerApplicationTests {
      */
     @Test
     public void multipleRequestsResultInOneRecovery() throws InterruptedException {
-        RecoveryRequestDTO r = generateRecoveryRequest(10L);
+        RecoveryRequest r = generateRecoveryRequest(10L);
 
         Assert.assertEquals("No approval requests at this point", 0, approvalRequests.size());
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("accepted"),
+                        "acceptanceDecision", equalTo("accepted"),
                         "recoveryId", equalTo(1));
 
         //Thread.sleep(10000);
@@ -552,12 +549,12 @@ public class ExpertControllerApplicationTests {
         ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
-        RecoveryRequestDTO r2 = generateRecoveryRequest(11L);
+        RecoveryRequest r2 = generateRecoveryRequest(11L);
 
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("rejected"),
+                        "acceptanceDecision", equalTo("rejected"),
                         "recoveryId", equalTo(2));
 
 
@@ -574,7 +571,7 @@ public class ExpertControllerApplicationTests {
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
-                        "status", equalTo("acceptedToContinue"),
+                        "acceptanceDecision", equalTo("acceptedToContinue"),
                         "recoveryId", equalTo(3),
                         "continuesTheConditionId", equalTo(10));
 
@@ -623,7 +620,7 @@ public class ExpertControllerApplicationTests {
 
 
             @Override
-            public void recoverAndWait(RecoveryRequest request, RecoveryRequestStep recoveryRequestStep) throws LV0AutomatorControlException {
+            public void recoverAndWait(RecoveryJob recoveryJob) throws LV0AutomatorControlException {
                 System.out.println("Recovery mock job started");
                 try {
                     Thread.sleep(timeToExecute);

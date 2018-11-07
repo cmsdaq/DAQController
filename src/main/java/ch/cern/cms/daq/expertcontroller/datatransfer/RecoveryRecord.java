@@ -1,11 +1,13 @@
 package ch.cern.cms.daq.expertcontroller.datatransfer;
 
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.Date;
 
 @Data
-public class RecoveryRecordDTO {
+@Builder
+public class RecoveryRecord {
 
     Long id;
     String name;

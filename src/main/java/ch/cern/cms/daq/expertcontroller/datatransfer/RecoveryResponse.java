@@ -9,9 +9,9 @@ import lombok.Data;
 public class RecoveryResponse {
 
     /**
-     * Result of the recovery request, may be accepted or rejected
+     * Result of the recovery request acceptance, may be accepted, rejected etc.
      */
-    private String status;
+    private String acceptanceDecision;
 
     /**
      * Id of the recovery request that was accepted or rejected
