@@ -1,0 +1,36 @@
+title Recovery (all layers)
+
+Controller->+Service: RecoveryRequest
+Service--> Service: accept
+Service--> Service: persist
+Service->-Controller: RecoveryResponse
+
+note left of Controller
+recovery
+accepted
+or not
+end note
+
+
+
+
+Service-->+Executor: start [job]
+
+Executor-->Service: approveRequest
+Service-->Executor: approveResponse
+
+Executor-->Service: statusUpdate
+
+
+Executor->+Rcms: execute [stepJob1]
+Rcms-->Service: update
+Rcms->-Executor: finished
+
+Executor-->Service: statusUpdate
+
+
+Executor->+Rcms: execute [stepJob2]
+Rcms-->Service: update
+Rcms->-Executor: finished
+
+Executor-->Service: statusUpdate
