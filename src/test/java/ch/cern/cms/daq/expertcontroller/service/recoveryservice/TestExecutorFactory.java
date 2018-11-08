@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
+import ch.cern.cms.daq.expertcontroller.entity.Event;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
@@ -10,11 +11,16 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class TestExecutorFactory extends ExecutorFactory {
 
 
     static Logger logger = LoggerFactory.getLogger(TestExecutorFactory.class);
+
+    public static Integer observingTime = 2000;
+
+    public static Integer recoveringTime = 2000;
 
 
     public static Function<RecoveryJob, FSMEvent> approvalConsumerThatAccepts = recoveryJob -> {
@@ -31,10 +37,21 @@ public class TestExecutorFactory extends ExecutorFactory {
 
     public static Function<RecoveryJob, FSMEvent> approvalConsumerThatNeverAccepts = recoveryJob -> null;
 
-    public static Function<RecoveryJob, FSMEvent> recoveryJobConsumerThatCompletes = recoveryJob -> {
+    public static Function<RecoveryJob, FSMEvent> recoveryJobConsumerThatCompletesImmediately = recoveryJob -> {
         logger.info("Executing job: " + recoveryJob.getJob());
         try {
             Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return FSMEvent.JobCompleted;
+
+    };
+
+    public static Function<RecoveryJob, FSMEvent> fixedTimeRecoveryJobConsumer = recoveryJob -> {
+        logger.info("Executing job: " + recoveryJob.getJob());
+        try {
+            Thread.sleep(recoveringTime);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -77,9 +94,8 @@ public class TestExecutorFactory extends ExecutorFactory {
 
     };
 
-    public static Supplier<FSMEvent> observerThatTimeouts = new Supplier<FSMEvent>() {
+    public static Supplier<FSMEvent> observerThatTimeoutsImmediately = new Supplier<FSMEvent>() {
 
-        boolean firstPassed = false;
 
         @Override
         public FSMEvent get() {
@@ -89,29 +105,49 @@ public class TestExecutorFactory extends ExecutorFactory {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-
-            if (firstPassed) {
-                logger.info("Finished successfully");
-                return FSMEvent.Finished;
-
-            }
             logger.info("Timeout");
-            firstPassed = true;
             return FSMEvent.NoEffect;
         }
     };
 
-    public static BiConsumer<RecoveryProcedure, List<String>> report = (rp, s) ->
-            logger.info("Reporting the acceptanceDecision: " + s);
+    public static Supplier<FSMEvent> fixedDelayObserver = new Supplier<FSMEvent>() {
+
+
+        @Override
+        public FSMEvent get() {
+            logger.info("Observing the system");
+            try {
+                Thread.sleep(observingTime);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            logger.info("Timeout");
+            return FSMEvent.NoEffect;
+        }
+    };
+
+    public static BiConsumer<RecoveryProcedure, List<String>> report = (rp, s) -> {
+            logger.info("Reporting the acceptanceDecision: "+s);
+            rp.setEventSummary(s.stream().map(c-> Event.builder().content(c).build()).collect(Collectors.toList()));
+    };
+
 
 
     public static IExecutor TEST_EXECUTOR = build(
             approvalConsumerThatNeverAccepts,
-            recoveryJobConsumerThatCompletes,
-            report, observerThatTimeouts,
+            recoveryJobConsumerThatCompletesImmediately,
+            report, observerThatTimeoutsImmediately,
             1,
             1
     );
 
+    public static IExecutor INTEGRATION_TEST_EXECUTOR = build(
+            approvalConsumerThatNeverAccepts,
+            fixedTimeRecoveryJobConsumer,
+            report,
+            fixedDelayObserver,
+            1,
+            recoveringTime*2
+    );
 
 }

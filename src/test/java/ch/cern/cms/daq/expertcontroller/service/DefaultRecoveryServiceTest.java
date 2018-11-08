@@ -100,7 +100,7 @@ public class DefaultRecoveryServiceTest {
         recoveryService.submitApprovalDecision(
                 ApprovalResponse.builder()
                         .approved(true)
-                        .recoveryId(0L) //TODO: update after adding checks to ids
+                        .recoveryProcedureId(0L) //TODO: update after adding checks to ids
                         .step(0) // TODO: check what happens when different steps are selected
                         .build());
 
@@ -145,7 +145,7 @@ public class DefaultRecoveryServiceTest {
         recoveryService.submitApprovalDecision(
                 ApprovalResponse.builder()
                         .approved(true)
-                        .recoveryId(0L) //TODO: update after adding checks to ids
+                        .recoveryProcedureId(0L) //TODO: update after adding checks to ids
                         .step(0)
                         .build());
 
@@ -163,7 +163,7 @@ public class DefaultRecoveryServiceTest {
         recoveryService.submitApprovalDecision(
                 ApprovalResponse.builder()
                         .approved(true)
-                        .recoveryId(0L) //TODO: update after adding checks to ids
+                        .recoveryProcedureId(0L) //TODO: update after adding checks to ids
                         .step(1) //TODO: check what happend if different steps are accepted
                         .build());
 

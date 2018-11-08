@@ -68,7 +68,7 @@ public class ProbeRecoverySender {
         }
 
         ApprovalResponse ar = new ApprovalResponse();
-        ar.setRecoveryId(recovery1Id);
+        ar.setRecoveryProcedureId(recovery1Id);
         ar.setApproved(true);
         ar.setStep(0);
 

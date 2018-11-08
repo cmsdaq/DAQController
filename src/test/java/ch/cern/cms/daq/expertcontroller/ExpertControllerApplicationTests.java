@@ -4,10 +4,13 @@ import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequest;
 import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestStep;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
-import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
+import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
+import ch.cern.cms.daq.expertcontroller.service.recoveryservice.TestExecutorFactory;
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import org.junit.*;
@@ -32,28 +35,23 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-import javax.xml.bind.DatatypeConverter;
 import java.lang.reflect.Type;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.post;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.CoreMatchers.startsWith;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
 
 
 //TODO: add oneRequestTEset when condition finishes itself, add oneRequestTEset when interrupt from LV0
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Ignore
-//TODO: get inspiration from this tests
 public class ExpertControllerApplicationTests {
 
 
@@ -72,11 +70,12 @@ public class ExpertControllerApplicationTests {
     Queue<ApprovalRequest> approvalRequests;
     /* Web socket session of the client who approves the requests */
     StompSession stompSession;
-    @Autowired
-    private RcmsController rcmsController;
 
     @Autowired
     private IRecoveryService recoveryService;
+
+    @Autowired
+    private RecoveryProcedureRepository recoveryProcedureRepository;
 
 
     @BeforeClass
@@ -107,9 +106,10 @@ public class ExpertControllerApplicationTests {
 
         stompSession.subscribe(SUBSCRIBE_REQUEST, new DefaultStompFrameHandler());
 
-        //recoveryService.getOngoingProblems().clear();
 
-        //Thread.sleep(15000);
+        Assert.assertEquals(0, recoveryProcedureRepository.findAll().size());
+
+        given().header(jsonHeader).get("/interrupt").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()));
 
     }
 
@@ -141,162 +141,278 @@ public class ExpertControllerApplicationTests {
     }
 
     @Test
-    public void simpleRequest() throws InterruptedException {
+    public void checkRecoveryRecordsAfterOneRequestTest() {
 
 
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.YEAR, 2);
-        String end = DatatypeConverter.printDateTime(cal);
-        cal.add(Calendar.YEAR, -1);
-        String start = DatatypeConverter.printDateTime(cal);
+        // 1. create recovery request with one step
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .build()))
+                .build();
 
-        //System.out.println("All: " + recoveryRecordRepository.findAll());
-
-        System.out.println("Requesting: " + start + "-" + end);
-        RecoveryRequest r = RecoveryRequest.builder().problemId(10L).recoverySteps(new ArrayList<>()).build();
-        r.getRecoverySteps().add(RecoveryRequestStep.builder().build());
-        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+        // 2. send to the controller & assert accepted
+        given().header(jsonHeader).body(r)
+                .post("/recover").then()
+                .assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryId", equalTo(1));
+                        "recoveryProcedureId", notNullValue()
+                );
 
-        given().queryParam("start", start)
-                .param("end", end).get("/records").then().assertThat()
+
+        // 3. Assert awaitingApproval status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", hasItem(startsWith(recoveryPrefix)))
-                .body("name", hasItem(is(waitinMessage)));
+                .body(
+                        "executorState", equalTo("AwaitingApproval")
+                );
 
-        Thread.sleep(2000);
+        //4. Assert status of the procedure
+        // TODO: if have procedure id
+
+
+        OffsetDateTime start = OffsetDateTime.now().minusYears(1);
+        OffsetDateTime end = OffsetDateTime.now().plusYears(1);
+        System.out.println("All: " + recoveryProcedureRepository.findAll());
+
+        // 5. Assert correct recovery records
+        given().queryParam("start", start.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                .param("end", end.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                .get("/records").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body("name", hasItem(startsWith("Recovery procedure #")));
+        //TODO: expect job results
+
     }
 
     /**
-     * Tests the behaviour when experts sends 'finished' signal
+     * Tests the behaviour when experts sends 'finished' signal before executor even starts the recovery procedure
      */
     @Test
-    public void finishedConditionCase() throws InterruptedException {
+    public void finishedSignalOnAwaitingApprovalTest() {
 
+        // 1. build request
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .build()))
+                .build();
 
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.YEAR, 2);
-        String end = DatatypeConverter.printDateTime(cal);
-        cal.add(Calendar.YEAR, -1);
-        String start = DatatypeConverter.printDateTime(cal);
-
-        RecoveryRequest r = generateRecoveryRequest(10L);
+        // 2. send request, assert that it's accepted
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryId", equalTo(1));
+                        "recoveryProcedureId", notNullValue());
 
-        given().queryParam("start", start)
-                .param("end", end).get("/records").then().assertThat()
+
+        // 3. Assert status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", hasItem(startsWith(recoveryPrefix)))
-                .body("name", hasItem(is(waitinMessage)));
-
-
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "conditionIds", contains(10),
-                        "acceptanceDecision", equalTo("awaiting approval"));
+                        "executorState", equalTo("AwaitingApproval")
+                );
 
-        given().header(jsonHeader).body(10L).post("/finished").then().assertThat()
+        // 4. Send finish signal
+        given().header(jsonHeader).body(101L).post("/finished").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()));
 
 
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        // 5. Assert status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "conditionIds", contains(10),
-                        "acceptanceDecision", equalTo("finished"));
+                        "executorState", equalTo("Idle"),
+                        "lastProcedureStatus.actionSummary", equalTo(Arrays.asList("Recovery procedure has been cancelled")),
+                        "lastProcedureStatus.finalStatus", equalTo("Cancelled")
+                );
 
+        // TODO: assert remaining status fields: id=null, jobStatuses=null, conditionIds=null,
 
-        Thread.sleep(2000);
     }
 
     /**
-     * Tests the behaviour when experts sends 'finished' signal after having request accepted
+     * Tests the behaviour when experts sends 'finished' signal on observing time
      */
     @Test
-    public void finishedAfterManyConditionsCase() throws InterruptedException {
+    public void finishedSignalOnObservingTest() throws InterruptedException {
 
+        // 1. build request
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .build()))
+                .build();
 
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.YEAR, 1);
-        String end = DatatypeConverter.printDateTime(cal);
-        cal.add(Calendar.YEAR, -2);
-        String start = DatatypeConverter.printDateTime(cal);
-
-
-        RecoveryRequest r = generateRecoveryRequest(10L);
-
+        // 2. send request, assert that it's accepted
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryId", equalTo(1));
+                        "recoveryProcedureId", notNullValue());
 
 
-        Thread.sleep(3000);
-        given().queryParam("start", start)
-                .param("end", end).get("/records").then().assertThat()
+        // 3. Assert status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage)));
+                .body(
+                        "executorState", equalTo("AwaitingApproval")
+                );
 
 
-        /* Approve current request */
-        ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
+        ApprovalResponse approvalResponse = generateApprovalResponse(10L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
-        Thread.sleep(timeToExecute / 2);
+        // 4. Send finish signal
+        given().header(jsonHeader).body(101L).post("/finished").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()));
 
-        // TODO: here for some reason waiting message is not present
-        given().queryParam("start", start)
-                .param("end", end).get("/records").then().assertThat()
+        Thread.sleep(2000);
+
+
+        // 5. Assert status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)));
+                .body(
+                        "executorState", equalTo("Idle"),
+                        "lastProcedureStatus.actionSummary", equalTo(Arrays.asList("Job J1 accepted", "Job J1 completed", "Recovery procedure completed successfully")),
+                        "lastProcedureStatus.finalStatus", equalTo("Completed")
+                );
+
+        // TODO: assert remaining status fields: id=null, jobStatuses=null, conditionIds=null,
+
+    }
 
 
-        // wait until job finishes and observe period starts
-        Thread.sleep(timeToExecute / 2 + observePeriod / 2);
+    /**
+     * Tests the behaviour for 2-job recovery procedure where 1st job doesn't fix the problem and 2nd does
+     */
+    @Test
+    public void twoStepRecoveryProcedureWhereSecondStepFixesTheProblemTest() throws InterruptedException {
 
-        given().queryParam("start", start)
-                .param("end", end).get("/records").then().assertThat()
+        // 1. build request
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .problemTitle("Problem T1")
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .stepIndex(0)
+                                .build(),
+
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J2")
+                                .stepIndex(1)
+                                .build()))
+                .build();
+
+        // 2. send request, assert that it's accepted
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "acceptanceDecision", equalTo("accepted"),
+                        "recoveryProcedureId", notNullValue());
+
+
+        ApprovalResponse approvalResponse = generateApprovalResponse(10L, 0);
+        stompSession.send(SEND_APPROVE, approvalResponse);
+
+
+        // 3. wait half time of the execution
+        Thread.sleep(TestExecutorFactory.recoveringTime / 2);
+
+        // 4. Assert status of the service while it's still executing
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)));
+                .body(
+                        "executorState", equalTo("Recovering")
+                );
 
-        RecoveryRequest r2 = generateRecoveryRequest(11L);
-        r2.setSameProblem(true);
 
+        // 5. wait until recovering finishes and observe period starts
+        Thread.sleep(TestExecutorFactory.recoveringTime / 2 + TestExecutorFactory.observingTime / 2);
+
+        // 6. build 2nd request
+        RecoveryRequest r2 = RecoveryRequest.builder()
+                .problemId(101L)
+                .isSameProblem(true)
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .build()))
+                .build();
+
+
+        //7. send and assert status: accepted to continue
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("acceptedToContinue"),
-                        "recoveryId", equalTo(2));
+                        "recoveryProcedureId", notNullValue());
 
-        given().queryParam("start", start)
-                .param("end", end).get("/records").then().assertThat()
+        // 8. Assert status of the service, job should be finished by now, should be in observing
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage)));
-
-
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "conditionIds", contains(10, 11),
-                        "acceptanceDecision", equalTo("acceptedToContinue"));
+                        "executorState", equalTo("Observe")
+                );
 
-        given().header(jsonHeader).body(11L).post("/finished").then().assertThat()
+        Thread.sleep(TestExecutorFactory.observingTime / 2);
+
+
+        // 9. Assert status of the service, 1st job and observation period should be finished by now
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "executorState", equalTo("AwaitingApproval")
+                );
+
+        ApprovalResponse approvalResponse2 = generateApprovalResponse(10L, 1);
+        stompSession.send(SEND_APPROVE, approvalResponse2);
+
+
+        given().header(jsonHeader).body(101L).post("/finished").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()));
 
 
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        // Finished signal was sent during recovering state - it will be delayed until observe period
+        Thread.sleep(TestExecutorFactory.recoveringTime);
+
+
+        // 8. Assert status of the service after 2nd job
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "conditionIds", contains(10, 11),
-                        "acceptanceDecision", equalTo("finished"));
+                        "executorState", equalTo("Idle")
+                );
 
 
-        Thread.sleep(2000);
     }
 
     private RecoveryRequest generateRecoveryRequest(Long problemId) {
@@ -308,7 +424,7 @@ public class ExpertControllerApplicationTests {
 
     private ApprovalResponse generateApprovalResponse(Long recoveryRequestId, Integer stepIndex) {
         ApprovalResponse approvalResponse = new ApprovalResponse();
-        approvalResponse.setRecoveryId(recoveryRequestId);
+        approvalResponse.setRecoveryProcedureId(recoveryRequestId);
         approvalResponse.setStep(stepIndex);
         approvalResponse.setApproved(true);
         return approvalResponse;
@@ -327,7 +443,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryId", equalTo(1));
+                        "recoveryProcedureId", equalTo(1));
 
         /* Check acceptanceDecision of current recovery*/
         given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
@@ -371,7 +487,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("rejected"),
-                        "recoveryId", equalTo(2),
+                        "recoveryProcedureId", equalTo(2),
                         "rejectedDueToConditionId", equalTo(10));
 
 //        given().get("/acceptanceDecision/2/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
@@ -409,7 +525,7 @@ public class ExpertControllerApplicationTests {
     public void acceptNonExisting() {
 
         ApprovalResponse approvalResponse = new ApprovalResponse();
-        approvalResponse.setRecoveryId(1L);
+        approvalResponse.setRecoveryProcedureId(1L);
         approvalResponse.setStep(0);
 
         stompSession.send(SEND_APPROVE, approvalResponse);
@@ -417,114 +533,111 @@ public class ExpertControllerApplicationTests {
     }
 
     @Test
-    public void preemptionTest() throws InterruptedException {
+    public void rejectionTest() {
+        // 1. build request
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .problemTitle("Problem T1")
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .stepIndex(0)
+                                .build()))
+                .build();
 
-        System.out.println("Preemption oneRequestTEset");
-
-
-        //System.out.println(recoverySequenceController);
-        System.out.println(recoveryService);
-
-        //Assert.assertEquals("Nothing before", 0, recoveryService.getOngoingProblems().size());
-
-        RecoveryRequest r = generateRecoveryRequest(10L);
-
+        // 2. send request, assert that it's accepted
         given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryId", equalTo(1));
+                        "recoveryProcedureId", notNullValue());
 
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        //3. check status of the service, should be awaiting approval
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "conditionIds", contains(10),
-                        "acceptanceDecision", equalTo("awaiting approval"));
-
-        //Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
-
-        RecoveryRequest r2 = generateRecoveryRequest(11L);
+                        "executorState", equalTo("AwaitingApproval"),
+                        "lastProcedureStatus.id", equalTo(10)
+                );
 
 
+        // 4. build 2nd request
+        RecoveryRequest r2 = RecoveryRequest.builder()
+                .problemId(101L)
+                .problemTitle("Problem T1")
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .stepIndex(0)
+                                .build()))
+                .build();
+
+        // 5. send request, assert that it's accepted
         given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("rejected"),
-                        "recoveryId", equalTo(2));
+                        "recoveryProcedureId", nullValue(),
+                        "rejectedDueToConditionId", equalTo(101)
+                );
+    }
 
-//        given().get("/acceptanceDecision/2/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
-//                .body(
-//                        "problemId", equalTo(11),
-//                        "acceptanceDecision", equalTo("rejected"));
+    /**
+     * Test the preemption behaviour
+     */
+    @Test
+    public void preemptionTest() {
 
-        r2.setWithInterrupt(true);
+        // 1. build request
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .problemTitle("Problem T1")
+                .recoverySteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .stepIndex(0)
+                                .build()))
+                .build();
 
-        given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
+        // 2. send request, assert that it's accepted
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "acceptanceDecision", equalTo("accepted"),
+                        "recoveryProcedureId", notNullValue());
+
+        //3. check status of the service, should be awaiting approval
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "executorState", equalTo("AwaitingApproval"),
+                        "lastProcedureStatus.id", equalTo(10)
+                );
+
+
+        //4. create preempting request
+        r.setWithInterrupt(true);
+
+        //5. send 2nd request, assert that has been accepted with preemption
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("acceptedWithPreemption"),
-                        "recoveryId", equalTo(3)
-                );
+                        "recoveryProcedureId", notNullValue());
 
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
+        //3. check status of the service, should be awaiting approval
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "conditionIds", contains(11),
-                        "acceptanceDecision", equalTo("awaiting approval"));
-
-        // TODO: support acceptanceDecision by id
-//        given().get("/acceptanceDecision/1/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
-//                .body(
-//                        "conditionIds", contains(10));
-
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(is(waitinMessage)), startsWith(recoveryPrefix), is(is(waitinMessage))));
-
-        //Assert.assertEquals(2, recoveryService.getOngoingProblems().size());
-
-        ApprovalResponse approvalResponse = generateApprovalResponse(3L, 0);
-        stompSession.send(SEND_APPROVE, approvalResponse);
-
-
-        Thread.sleep(timeToExecute / 2);
-
-
-        given().header(jsonHeader).body(11L).post("/finished").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()));
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", hasSize(5))
-                .body("name", contains(startsWith("Recovery of"), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)))
-                .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), nullValue()));
-
-        Thread.sleep(timeToExecute / 2 + observePeriod / 2); // after 5 seconds the job will finish
-
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", hasSize(6))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)))
-                .body("end", contains(notNullValue(), notNullValue(), nullValue(), notNullValue(), notNullValue(), nullValue()));
-
-
-        //Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
-
-        System.out.println("+++++++++++");
-        Thread.sleep(observePeriod); // after 15 seconds the observingMessage will finish
-
-
-        System.out.println("===========");
-        //Assert.assertEquals(1, recoveryService.getOngoingProblems().size());
-
-        /* 1st recoveyr request will be preempted by 2nd request, after it's finished, 1st will be picked up again as it was not finished */
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), startsWith(recoveryPrefix), is(waitinMessage)))
-                .body("end", contains(notNullValue(), notNullValue(), notNullValue(), notNullValue(), notNullValue(), notNullValue(), nullValue(), nullValue()));
+                        "executorState", equalTo("AwaitingApproval"),
+                        "lastProcedureStatus.id", equalTo(11) // NOTE that new procedure has been created
+                );
     }
 
     /**
@@ -539,11 +652,11 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryId", equalTo(1));
+                        "recoveryProcedureId", equalTo(1));
 
         //Thread.sleep(10000);
         //Assert.assertEquals(1, approvalRequests.size());
-        //Assert.assertThat(approvalRequests, contains(hasProperty("recoveryId", is(1L))));
+        //Assert.assertThat(approvalRequests, contains(hasProperty("recoveryProcedureId", is(1L))));
         //approvalRequests.poll();
 
         ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
@@ -555,7 +668,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("rejected"),
-                        "recoveryId", equalTo(2));
+                        "recoveryProcedureId", equalTo(2));
 
 
         // wait until job finishes and observe period starts
@@ -572,7 +685,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("acceptedToContinue"),
-                        "recoveryId", equalTo(3),
+                        "recoveryProcedureId", equalTo(3),
                         "continuesTheConditionId", equalTo(10));
 
         given().queryParam("start", "2000-01-01T00:00:00Z")
@@ -583,7 +696,7 @@ public class ExpertControllerApplicationTests {
 
 
         //Assert.assertEquals(1, approvalRequests.size());
-        //Assert.assertThat(approvalRequests, contains(hasProperty("recoveryId", is(1L))));
+        //Assert.assertThat(approvalRequests, contains(hasProperty("recoveryProcedureId", is(1L))));
 
         ApprovalResponse approvalResponse2 = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse2);
@@ -611,6 +724,13 @@ public class ExpertControllerApplicationTests {
 
     @TestConfiguration
     public static class TestConfig {
+
+
+        @Bean
+        public IExecutor executorService() {
+            return TestExecutorFactory.INTEGRATION_TEST_EXECUTOR;
+        }
+
         @Bean
         public RcmsController rcmsController() {
             return new RcmsControllerMock();
@@ -668,12 +788,16 @@ public class ExpertControllerApplicationTests {
         }
     }
 
+    @Deprecated
     private String recoveryPrefix = "Recovery of";
 
+    @Deprecated
     private String executingPrefix = "Executing ";
 
+    @Deprecated
     private String waitinMessage = "Waiting for approval";
 
+    @Deprecated
     private String observingMessage = "Observing ..";
 
 

@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.IFSMListener;
@@ -91,6 +92,22 @@ class IFSMListenerMock implements IFSMListener {
     @Override
     public FSMEvent onInterrupted() {
         System.out.println("on interrupted");
+        return null;
+    }
+
+    @Override
+    public FSMEvent onCancelled() {
+        System.out.println("on cancelled");
+        return null;
+    }
+
+    @Override
+    public RecoveryJob getCurrentJob() {
+        return null;
+    }
+
+    @Override
+    public RecoveryProcedure getCurrentProcedure() {
         return null;
     }
 

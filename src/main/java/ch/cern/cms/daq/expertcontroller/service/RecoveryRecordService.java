@@ -6,6 +6,7 @@ import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
@@ -18,7 +19,7 @@ public class RecoveryRecordService {
     @Autowired
     private RecoveryProcedureRepository recoveryProcedureRepository;
 
-    public List<RecoveryRecord> getRecords(ZonedDateTime start, ZonedDateTime end) {
+    public List<RecoveryRecord> getRecords(OffsetDateTime start, OffsetDateTime end) {
 
         List<RecoveryProcedure> procedures = recoveryProcedureRepository.findBetween(start, end);
 
@@ -27,16 +28,16 @@ public class RecoveryRecordService {
         procedures.stream().forEach(p -> {
 
             RecoveryRecord procedureRecord = RecoveryRecord.builder()
-                    .start(Date.from(p.getStart().toInstant()))
-                    .end(Date.from(p.getEnd().toInstant()))
+                    .start(p.getStart())
+                    .end(p.getEnd())
                     .name("Recovery procedure #" + p.getId())
                     .description("" + p.getProblemTitle())
                     .build();
 
             List<RecoveryRecord> jobRecords = p.getExecutedJobs().stream()
                     .map(j -> RecoveryRecord.builder()
-                            .start(Date.from(j.getStart().toInstant()))
-                            .end(Date.from(j.getEnd().toInstant()))
+                            .start(j.getStart())
+                            .end(j.getEnd())
                             .name("Job #" + j.getId())
                             .description("" + j.getJob())
                             .build()

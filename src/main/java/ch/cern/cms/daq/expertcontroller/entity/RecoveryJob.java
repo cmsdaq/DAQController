@@ -1,10 +1,9 @@
 package ch.cern.cms.daq.expertcontroller.entity;
 
-import lombok.Builder;
-import lombok.Data;
-import lombok.ToString;
+import lombok.*;
 
 import javax.persistence.*;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.Set;
 
@@ -18,6 +17,8 @@ import java.util.Set;
 @Builder
 @ToString
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
 public class RecoveryJob {
 
 
@@ -30,11 +31,13 @@ public class RecoveryJob {
      */
     String job;
 
-    ZonedDateTime start;
+    OffsetDateTime start;
 
-    ZonedDateTime end;
+    OffsetDateTime end;
 
     Boolean issueTTCHardReset;
+
+    Integer stepIndex;
 
     @ElementCollection
     @CollectionTable(name ="recoveryJobRedRecycle")

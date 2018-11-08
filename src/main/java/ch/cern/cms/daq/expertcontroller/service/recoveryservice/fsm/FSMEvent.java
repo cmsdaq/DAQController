@@ -51,7 +51,15 @@ public enum FSMEvent {
 
     Exception,
 
+    /**
+     * Problem that has been a reason to recover has finished due to controller recovery
+     */
     Finished,
+
+    /**
+     * Problem that has been a reason to recover has finished by itself
+     */
+    FinishedByItself,
 
     Interrupt
 

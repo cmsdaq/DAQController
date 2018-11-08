@@ -1,11 +1,9 @@
 package ch.cern.cms.daq.expertcontroller.entity;
 
-import lombok.Builder;
-import lombok.Data;
-import lombok.ToString;
+import lombok.*;
 
 import javax.persistence.*;
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,6 +15,8 @@ import java.util.List;
 @ToString
 @Data
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
 public class RecoveryProcedure {
 
     @Id
@@ -26,15 +26,15 @@ public class RecoveryProcedure {
     /**
      * Related problem ids
      */
-    @ElementCollection
-    @CollectionTable(name ="problemIds")
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "problemIds")
     private List<Long> problemIds;
 
     private String problemTitle;
 
-    private ZonedDateTime start;
+    private OffsetDateTime start;
 
-    private ZonedDateTime end;
+    private OffsetDateTime end;
 
     private String state;
 
@@ -42,13 +42,13 @@ public class RecoveryProcedure {
      * Jobs that were executed. Detailed information when and how many times there were executed.
      */
     @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinColumn(name="recovery_procedure_id")
-    @OrderColumn(name="list_index")
+    @JoinColumn(name = "recovery_procedure_id")
+    @OrderColumn(name = "list_index")
     private List<RecoveryJob> executedJobs;
 
     @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinColumn(name="recovery_procedure_id")
-    @OrderColumn(name="list_index")
+    @JoinColumn(name = "recovery_procedure_id")
+    @OrderColumn(name = "list_index")
     private List<Event> eventSummary;
 
 
@@ -56,7 +56,7 @@ public class RecoveryProcedure {
      * Procedure that was created based on first request
      */
     @Transient
-    private final List<RecoveryJob> procedure;
+    private List<RecoveryJob> procedure;
 
     @Transient
     private Iterator<RecoveryJob> iterator;

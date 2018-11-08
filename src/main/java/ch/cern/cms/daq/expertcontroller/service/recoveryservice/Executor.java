@@ -3,13 +3,16 @@ package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
-import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSM;
+import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.IFSMListener;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
 import lombok.Builder;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
@@ -56,9 +59,11 @@ public class Executor implements IExecutor {
     protected BiConsumer<RecoveryProcedure, List<String>> statusReportConsumer;
 
     /**
-     * Executor service. Will allow to run 1 job at the time.
+     * Thread pool that will execute jobs. Eg. with one thread to allow to run 1 job at the time.
      */
     protected ExecutorService executorService;
+
+    protected ScheduledThreadPoolExecutor delayedFinishedSignals;
 
     /**
      * Timeout period to approve the recovery job.
@@ -73,6 +78,8 @@ public class Executor implements IExecutor {
     @Getter
     protected RecoveryProcedure executedProcedure;
 
+    private static Logger logger = LoggerFactory.getLogger(Executor.class);
+
 
     @Override
     public List<String> start(RecoveryProcedure recoveryProcedure) {
@@ -85,8 +92,17 @@ public class Executor implements IExecutor {
     @Override
     public void approveRecovery(ApprovalResponse approvalResponse) {
 
-        // TODO: check if response concerns the same recovery
-        boolean defaultJobContext = true;
+        if(executedProcedure == null){
+            throw new IllegalStateException("Received approval response when executor is in Idle state");
+        }
+
+        if(listener.getCurrentJob() == null){
+            throw new IllegalStateException("Received approval when executor has no current job");
+        }
+        // 1. check if response concerns the same recovery procedure and job
+        boolean defaultJobContext =
+                executedProcedure.getId() == approvalResponse.getRecoveryProcedureId()
+                        && listener.getCurrentJob().getStepIndex() == approvalResponse.getStep();
 
         /* default job accepted */
         if (defaultJobContext && approvalResponse.getApproved()) {
@@ -116,7 +132,13 @@ public class Executor implements IExecutor {
 
     @Override
     public void finished() {
-        fsm.transition(FSMEvent.Finished);
+        if(fsm.getState() == State.Observe) {
+            fsm.transition(FSMEvent.Finished);
+        } else if (fsm.getState() == State.Recovering){
+            delayedFinishedSignals.schedule(()->this.finished(),1,TimeUnit.SECONDS);
+        } else if (fsm.getState() == State.AwaitingApproval || fsm.getState() == State.SelectingJob){
+            fsm.transition(FSMEvent.FinishedByItself);
+        }
     }
 
     @Override
@@ -133,7 +155,8 @@ public class Executor implements IExecutor {
         Future<FSMEvent> future = executorService.submit(() -> jobApprovalConsumer.apply(recoveryJob));
         try {
             return future.get(approvalTimeout, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             return FSMEvent.Interrupt;
         } catch (ExecutionException e) {
             return FSMEvent.Exception;
@@ -147,13 +170,16 @@ public class Executor implements IExecutor {
         Future<FSMEvent> future = executorService.submit(() -> jobConsumer.apply(recoveryJob));
         try {
             return future.get(executionTimeout, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        }
+        // exception will be thrown only on external interrupt
+        catch (InterruptedException e) {
+            logger.info("Recovery job timeouts. Limit is " + executionTimeout + " seconds");
             return FSMEvent.Interrupt;
         } catch (ExecutionException e) {
             e.printStackTrace();
             return FSMEvent.Exception;
         } catch (TimeoutException e) {
-            e.printStackTrace();
+            logger.info("Recovery job timeouts. Limit is " + executionTimeout + " seconds");
             return FSMEvent.Timeout;
         }
     }
@@ -163,9 +189,16 @@ public class Executor implements IExecutor {
         Future<FSMEvent> future = executorService.submit(() -> observationConsumer.get());
         try {
             return future.get();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return FSMEvent.Interrupt;
+        }
+        // exception will be thrown whenever external interrupt comes or finish signal arrives on observation period
+        catch (InterruptedException e) {
+
+            // external interrupt during observe period
+            if(fsm.getState() == State.Observe)
+                return FSMEvent.Interrupt;
+            // finish signal
+            else
+                return null;
         } catch (ExecutionException e) {
             e.printStackTrace();
             return FSMEvent.Exception;
@@ -174,6 +207,7 @@ public class Executor implements IExecutor {
 
     @Override
     public void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<String> report) {
+        recoveryProcedure.setEnd(OffsetDateTime.now());
         statusReportConsumer.accept(recoveryProcedure, report);
     }
 

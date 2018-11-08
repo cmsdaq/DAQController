@@ -10,11 +10,15 @@ import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.sql.Date;
+import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Service
 public abstract class DefaultRecoveryService implements IRecoveryService {
 
 
@@ -60,33 +64,42 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             case "accepted":
                 logger.info("Accepted recovery request: " + request);
                 RecoveryProcedure recoveryProcedure = createRecoveryProcedure(request);
-                //TODO: set id of the recovery procedure to the response?
-                //TODO: thread should be spanned here
+
+                //TODO: thread should be spanned here - isn't it now?
+
+                recoveryProcedure.setStart(OffsetDateTime.now());
+                recoveryProcedureRepository.save(recoveryProcedure);
+                logger.info("New procedure has been persisted with id " + recoveryProcedure.getId());
                 recoveryProcedureExecutor.start(recoveryProcedure);
-                response.setRecoveryId(recoveryProcedure.getId());
+                response.setRecoveryProcedureId(recoveryProcedure.getId());
+
                 break;
             case "acceptedWithPreemption":
                 logger.info("Accepted with preemption recovery " + request);
 
-
-                //TODO: save preeempted? preemptedProblems.add(currentRequest.getProblemId());
-                //TODO: set id of the recovery procedure to the response?
+                //TODO: save preempted? preemptedProblems.add(currentRequest.getProblemId());
                 recoveryProcedureExecutor.interrupt();
+
+                RecoveryProcedure preemptedProcedure = recoveryProcedureExecutor.getExecutedProcedure();
+                recoveryProcedureRepository.save(preemptedProcedure);
+                logger.info("Preempted procedure has been updated in db");
 
                 RecoveryProcedure preemptingProcedure = createRecoveryProcedure(request);
                 recoveryProcedureExecutor.start(preemptingProcedure);
-                response.setRecoveryId(preemptingProcedure.getId());
+                recoveryProcedureRepository.save(preemptingProcedure);
+                logger.info("Preempting procedure has been persisted with id " + preemptedProcedure.getId());
+
+                response.setRecoveryProcedureId(preemptingProcedure.getId());
                 break;
 
             case "acceptedToContinue":
 
                 logger.info("Accepted to continue recovery " + request);
-
-                //TODO: set id of the recovery procedure to the response?
-                //response.setRecoveryId(preemptingProcedure.getId());
+                response.setRecoveryProcedureId(recoveryProcedureExecutor.getExecutedProcedure().getId());
 
                 //TODO: set which problem id is continued (Expert must match?)
                 //TODO: set executor to continue
+                //TODO: add problem id to recovery procedure
 
 
                 break;
@@ -103,8 +116,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 break;
             case "rejected":
                 logger.info("Rejected recovery " + request);
-                //TODO: set rejection reason (= condition id)
-                Long conditionId = 0L;
+                Long conditionId = recoveryProcedureExecutor.getExecutedProcedure().getProblemIds().iterator().next();
                 response.setRejectedDueToConditionId(conditionId);
                 break;
             default:
@@ -202,6 +214,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         if (existLastProcedure) {
             recoveryProcedureStatus.setActionSummary(actionSummary);
             recoveryProcedureStatus.setFinalStatus(finalStatus);
+            recoveryProcedureStatus.setId(lastExecutedProcedure.getId());
             builder.lastProcedureStatus(recoveryProcedureStatus);
         }
         return builder.build();
@@ -217,11 +230,11 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     public String submitApprovalDecision(ApprovalResponse approvalResponse) {
 
 
-        Long recoveryId = approvalResponse.getRecoveryId();
+        Long recoveryId = approvalResponse.getRecoveryProcedureId();
         Integer step = approvalResponse.getStep();
 
         if (recoveryId == null) {
-            throw new IllegalArgumentException("The 'recoveryId' parameter must not be null or empty");
+            throw new IllegalArgumentException("The 'recoveryProcedureId' parameter must not be null or empty");
         }
         if (approvalResponse.getApproved() == null) {
             throw new IllegalArgumentException("The 'approved' parameter must not be null or empty");
@@ -263,19 +276,17 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         RecoveryProcedure recoveryJob =
                 RecoveryProcedure.builder().
                         procedure(recoveryRequest.getRecoverySteps().stream()
-                                          .map(c -> RecoveryJob.builder().job(c.getHumanReadable()).build())
+                                          .map(c -> RecoveryJob.builder()
+                                                  .job(c.getHumanReadable())
+                                                  .stepIndex(c.getStepIndex())
+                                                  .build())
                                           .collect(Collectors.toList()))
                         .problemTitle(recoveryRequest.getProblemTitle())
+                        .problemIds(Arrays.asList(recoveryRequest.getProblemId()))
                         .build();
 
         return recoveryJob;
     }
-
-    private RecoveryProcedure getCurrentProcedure() {
-        //TODO: find corresponding procedure that is currently being executed only in case of same problem
-        return null;
-    }
-
 
     /**
      * Decides whether recovery request will be accepted to execute.
@@ -335,20 +346,36 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     @Override
     public void finished(Long id) {
 
-        if (recoveryProcedureExecutor.getStatus().getState() != State.Idle) {
+        logger.info("Handling finish signal for problem " + id);
+        State executorState = recoveryProcedureExecutor.getStatus().getState();
 
-            //TODO check if id corresponds to any id in current Recovery Procedure
-            boolean corresponds = true;
+        if (executorState != State.Idle) {
 
-            if (corresponds && recoveryProcedureExecutor.getStatus().getState() == State.Observe) {
-                recoveryProcedureExecutor.finished();
-            } else if (corresponds && recoveryProcedureExecutor.getStatus().getState() == State.Recovering) {
-                // TODO: delay the signal to FSM
-            } else {
-                // ignore this signal, probably due to delay the corresponding
+            boolean corresponds;
+            try {
+                corresponds = recoveryProcedureExecutor.getExecutedProcedure().getProblemIds().contains(id);
+            } catch (NullPointerException e) {
+                corresponds = false;
             }
 
 
+            if (corresponds) {
+
+                if (Arrays.asList(State.Observe, State.SelectingJob, State.AwaitingApproval, State.Recovering).contains(executorState)) {
+
+                    logger.info("Executor in " + executorState + " state. Handling finish signal.");
+                    recoveryProcedureExecutor.finished();
+                } else {
+                    logger.info("Finish signal will be ignored in current executor state: " + executorState);
+                }
+
+            } else {
+                logger.info("Finish signal for problem " + id + " unrelated to currently executed recovery procedure: "
+                                    + recoveryProcedureExecutor.getExecutedProcedure().getProblemIds());
+            }
+
+        } else {
+            logger.info("Executor is in idle state, ignoring finished signal");
         }
 
     }
@@ -362,5 +389,13 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         }
     }
 
-
+    @Override
+    public void interrupt() {
+        logger.info("Handling interrupting signal");
+        if(recoveryProcedureExecutor.getStatus().getState() != State.Idle) {
+            recoveryProcedureExecutor.interrupt();
+        } else {
+            logger.info("Executor is in idle state, ignoring interrupt signal");
+        }
+    }
 }

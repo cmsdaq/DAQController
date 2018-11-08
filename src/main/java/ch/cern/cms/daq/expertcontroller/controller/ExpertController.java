@@ -1,9 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.controller;
 
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryProcedureStatus;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRecord;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryResponse;
+import ch.cern.cms.daq.expertcontroller.datatransfer.*;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import ch.cern.cms.daq.expertcontroller.service.ProbeRecoverySender;
 import ch.cern.cms.daq.expertcontroller.service.RecoveryRecordService;
@@ -16,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -51,7 +48,7 @@ public class ExpertController {
     @RequestMapping(value = "/recover", method = RequestMethod.POST)
     public ResponseEntity<RecoveryResponse> requestRecovery(@RequestBody RecoveryRequest request) {
 
-        logger.info("New recovery request: " + request.getProblemDescription() + " problem id: " + request.getProblemId());
+        logger.info("New recovery request for problem: " + request.getProblemId() + " " + request.getProblemTitle());
 
         if (request.getRecoverySteps() == null || request.getRecoverySteps().size() == 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); //TODO might be useful to describe why bad request
@@ -60,6 +57,16 @@ public class ExpertController {
         RecoveryResponse response = recoveryService.submitRecoveryRequest(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @RequestMapping(value = "/service-status", method = RequestMethod.GET)
+    public RecoveryServiceStatus getRecoveryServiceStatus() {
+        return recoveryService.getRecoveryServiceStatus();
+    }
+
+    @RequestMapping(value = "/procedure-status/{id}", method = RequestMethod.GET)
+    public RecoveryProcedureStatus getRecoveryProcedureStatus(@PathVariable Long id) {
+        return recoveryService.getRecoveryProcedureStatus(id);
     }
 
 
@@ -72,7 +79,7 @@ public class ExpertController {
     @RequestMapping(value = "/finished", method = RequestMethod.POST)
     public void conditionFinished(@RequestBody Long id) {
         logger.info("Finished signal received: " + id);
-        //recoveryService.finished(id);
+        recoveryService.finished(id);
     }
 
     /**
@@ -100,26 +107,6 @@ public class ExpertController {
         throw new NotYetImplementedException();
     }
 
-    /**
-     * Endpoint to get acceptanceDecision of a given recovery.
-     *
-     * @returns data transfer object describing acceptanceDecision of current recovery
-     */
-    @RequestMapping(value = "/acceptanceDecision/", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryProcedureStatus> status() {
-
-        logger.info("New recovery acceptanceDecision request");
-
-        RecoveryProcedureStatus recoveryProcedureStatus = null;//recoveryService.getAcceptanceDecision();
-
-        if (recoveryProcedureStatus != null) {
-
-            return ResponseEntity.ok(recoveryProcedureStatus);
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-        }
-    }
-
 
     @Deprecated
     @RequestMapping(value = "/acceptanceDecision/{id}/{step}/", method = RequestMethod.GET)
@@ -141,13 +128,18 @@ public class ExpertController {
     @CrossOrigin(origins = "*")
     @RequestMapping(value = "/records")
     public Collection<RecoveryRecord> getRecoveryRecords(
-            @RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime start,
-            @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime end) {
+            @RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime start,
+            @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime end) {
         logger.info("Requested records between: " + start + " and  " + end);
         List<RecoveryRecord> result = recoveryRecordService.getRecords(start, end);
 
         logger.debug("Result: " + result);
         return result;
+    }
+
+    @RequestMapping(value = "/interrupt", method = RequestMethod.GET)
+    public void interrupt(){
+        recoveryService.interrupt();
     }
 
     /**

@@ -12,5 +12,5 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class ApprovalRequest {
-    private long recoveryId;
+    private long recoveryProcedureId;
 }

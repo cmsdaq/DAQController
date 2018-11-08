@@ -40,11 +40,8 @@ public class DashboardController {
     public RecoveryProcedureStatus approve(@RequestBody ApprovalResponse approvalResponse) {
 
         logger.info("Approval request: " + approvalResponse);
-        //recoveryService.handleDecision(approvalResponse);
-
-        //return recoveryService.getAcceptanceDecision();
-        return null;
-
+        recoveryService.submitApprovalDecision(approvalResponse);
+        return recoveryService.getRecoveryProcedureStatus(approvalResponse.getRecoveryProcedureId());
     }
 
     /**
@@ -53,7 +50,7 @@ public class DashboardController {
      * @param approvalRequest data transfer object describing what needs to be approved
      */
     public void requestApprove(ApprovalRequest approvalRequest) {
-        logger.info("Requesting operator approval of recovery: " + approvalRequest.getRecoveryId());
+        logger.info("Requesting operator approval of recovery: " + approvalRequest.getRecoveryProcedureId());
         this.template.convertAndSend("/topic/approveRequests", approvalRequest);
     }
 

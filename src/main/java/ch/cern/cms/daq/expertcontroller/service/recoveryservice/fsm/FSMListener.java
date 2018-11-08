@@ -4,9 +4,11 @@ import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import lombok.Builder;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +18,10 @@ public class FSMListener implements IFSMListener {
 
     private IExecutor executor;
 
+    @Getter
     private RecoveryProcedure currentProcedure;
+
+    @Getter
     private RecoveryJob currentJob;
 
     List<String> reportSteps;
@@ -41,6 +46,11 @@ public class FSMListener implements IFSMListener {
 
     private FSMEvent selectNextJob() {
         RecoveryJob nextJob = currentProcedure.getNextJob();
+
+        if(currentProcedure.getExecutedJobs() == null){
+            currentProcedure.setExecutedJobs(new ArrayList<>());
+        }
+        currentProcedure.getExecutedJobs().add(nextJob);
 
         if (nextJob != null) {
             currentJob = nextJob;
@@ -86,11 +96,14 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onRecoveryFailed() {
-        return null;
+        reportSteps.add("Recovery procedure failed");
+        finishProcedure();
+        return FSMEvent.ReportStatus;
     }
 
     @Override
     public FSMEvent onReportStatus() {
+
         executor.callStatusReportConsumer(currentProcedure, reportSteps);
         return null;
     }
@@ -99,6 +112,7 @@ public class FSMListener implements IFSMListener {
     public FSMEvent onNextJobNotFound() {
         logger.info("Next job not found");
         reportSteps.add("Job not found, recovery failed");
+        finishProcedure();
         return FSMEvent.ReportStatus;
     }
 
@@ -111,25 +125,43 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onTimeout() {
         reportSteps.add("Job: " + currentJob.getJob() + " times out");
+        finishProcedure();
         return FSMEvent.ReportStatus;
     }
 
     @Override
     public FSMEvent onException() {
-        return null;
+        reportSteps.add("Recovery procedure finished with exception");
+        finishProcedure();
+        return FSMEvent.ReportStatus;
     }
 
     @Override
     public FSMEvent onFinished() {
-        reportSteps.add("Recovery procedure finished successfully");
+        reportSteps.add("Recovery procedure completed successfully");
+        finishProcedure();
         return FSMEvent.ReportStatus;
     }
 
     @Override
     public FSMEvent onInterrupted() {
         //TODO: stop any ongoing action
-        reportSteps.add("Interrupted");
+        reportSteps.add("Recovery procedure has been interrupted");
+        finishProcedure();
         return FSMEvent.ReportStatus;
+    }
+
+    @Override
+    public FSMEvent onCancelled() {
+        reportSteps.add("Recovery procedure has been cancelled");
+        finishProcedure();
+        return FSMEvent.ReportStatus;
+    }
+
+    private void finishProcedure(){
+        currentProcedure.setEnd(OffsetDateTime.now());
+        currentProcedure.setState(executor.getStatus().getState().toString());
+
     }
 
 }

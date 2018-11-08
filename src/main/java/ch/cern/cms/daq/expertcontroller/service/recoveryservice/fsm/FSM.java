@@ -13,19 +13,19 @@ public class FSM {
         return this.state;
     }
 
-    public void transition(FSMEvent FSMEvent) {
+    public void transition(FSMEvent fsmEvent) {
 
-        if (FSMEvent == null) {
+        if (fsmEvent == null) {
             throw new IllegalArgumentException();
         }
 
         int stateId = this.state.ordinal();
-        int eventId = FSMEvent.ordinal();
+        int eventId = fsmEvent.ordinal();
 
         if (stateId >= State.values().length) {
             throw new IllegalStateException();
         }
-        if (eventId >= FSMEvent.values().length) {
+        if (eventId >= fsmEvent.values().length) {
             throw new IllegalStateException();
         }
 
@@ -35,12 +35,12 @@ public class FSM {
             this.state = next;
 
             if (listener != null) {
-                handleEvent(FSMEvent);
+                handleEvent(fsmEvent);
             }
 
             return;
         } else {
-            throw new IllegalStateException("Illegal state transition: " + this.state + " on FSMEvent " + FSMEvent);
+            throw new IllegalStateException("Illegal state transition: " + fsmEvent  + " on state: " + this.state);
         }
 
     }
@@ -60,9 +60,11 @@ public class FSM {
 
         addToArray(State.SelectingJob, FSMEvent.NextJobNotFound, State.Failed);
         addToArray(State.SelectingJob, FSMEvent.NextJobFound, State.AwaitingApproval);
+        addToArray(State.SelectingJob, FSMEvent.FinishedByItself, State.Cancelled);
 
         addToArray(State.AwaitingApproval, FSMEvent.JobAccepted, State.Recovering);
         addToArray(State.AwaitingApproval, FSMEvent.Timeout, State.Cancelled);
+        addToArray(State.AwaitingApproval, FSMEvent.FinishedByItself, State.Cancelled);
 
         addToArray(State.Recovering, FSMEvent.JobCompleted, State.Observe);
         addToArray(State.Recovering, FSMEvent.Timeout, State.Failed);
@@ -85,6 +87,12 @@ public class FSM {
     }
 
 
+    /**
+     * TODO: Refactor this: right now this handlers are both based on event and on state. Make it based on
+     * state(initing-event)
+     *
+     * @param FSMEvent
+     */
     private void handleEvent(FSMEvent FSMEvent) {
 
         FSMEvent result = null;
@@ -126,6 +134,8 @@ public class FSM {
             case Interrupt:
                 result = listener.onInterrupted();
                 break;
+            case FinishedByItself:
+                result = listener.onCancelled();
         }
 
         if (result != null) {

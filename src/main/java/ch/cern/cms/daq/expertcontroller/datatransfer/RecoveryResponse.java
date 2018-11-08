@@ -14,17 +14,7 @@ public class RecoveryResponse {
     private String acceptanceDecision;
 
     /**
-     * Id of the recovery request that was accepted or rejected
-     */
-    private Long recoveryId;
-
-    /**
-     * Id of the condition that generated recovery
-     */
-    private Long conditionId;
-
-    /**
-     * Id of the recovery procedure
+     * Id of the recovery procedure that was created (unless it was rejected)
      */
     private Long recoveryProcedureId;
 

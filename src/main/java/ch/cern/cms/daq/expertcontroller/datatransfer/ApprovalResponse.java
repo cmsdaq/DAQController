@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ApprovalResponse {
 
-    Long recoveryId;
+    Long recoveryProcedureId;
 
     Integer step;
 

@@ -3,7 +3,7 @@ package ch.cern.cms.daq.expertcontroller.datatransfer;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.Date;
+import java.time.OffsetDateTime;
 
 @Data
 @Builder
@@ -12,7 +12,7 @@ public class RecoveryRecord {
     Long id;
     String name;
     String description;
-    Date start;
-    Date end;
+    OffsetDateTime start;
+    OffsetDateTime end;
 
 }

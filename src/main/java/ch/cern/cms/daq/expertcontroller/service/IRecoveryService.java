@@ -51,6 +51,8 @@ public interface IRecoveryService {
      */
     void finished(Long id);
 
+    void interrupt();
+
     /**
      * Closes the service gracefully before shutdown
      */

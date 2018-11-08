@@ -2,7 +2,6 @@ package ch.cern.cms.daq.expertcontroller;
 
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -30,7 +29,7 @@ public class RecoveryServiceTest {
     public void noRecoveryApprovedArgumentTest() {
 
         ApprovalResponse approvalResponse = new ApprovalResponse();
-        approvalResponse.setRecoveryId(1L);
+        approvalResponse.setRecoveryProcedureId(1L);
         //recoveryService.handleDecision(approvalResponse);
     }
 
@@ -38,7 +37,7 @@ public class RecoveryServiceTest {
     public void acceptRecoveryStep() {
 
         ApprovalResponse approvalResponse = new ApprovalResponse();
-        approvalResponse.setRecoveryId(1L);
+        approvalResponse.setRecoveryProcedureId(1L);
         approvalResponse.setStep(1);
         approvalResponse.setApproved(true);
         //String result = recoveryService.handleDecision(approvalResponse);
@@ -49,7 +48,7 @@ public class RecoveryServiceTest {
     public void accpetRecoveryProcedure() {
 
         ApprovalResponse approvalResponse = new ApprovalResponse();
-        approvalResponse.setRecoveryId(1L);
+        approvalResponse.setRecoveryProcedureId(1L);
         approvalResponse.setApproved(true);
        //String result = recoveryService.handleDecision(approvalResponse);
         //Assert.assertEquals("Recovery procedure successfully approved", result);
