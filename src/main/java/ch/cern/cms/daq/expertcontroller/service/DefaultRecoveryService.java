@@ -230,15 +230,20 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     public String submitApprovalDecision(ApprovalResponse approvalResponse) {
 
 
-        Long recoveryId = approvalResponse.getRecoveryProcedureId();
+        Long procedureId = approvalResponse.getRecoveryProcedureId();
         Integer step = approvalResponse.getStep();
 
-        if (recoveryId == null) {
+        if (procedureId == null) {
             throw new IllegalArgumentException("The 'recoveryProcedureId' parameter must not be null or empty");
         }
         if (approvalResponse.getApproved() == null) {
             throw new IllegalArgumentException("The 'approved' parameter must not be null or empty");
         }
+        if(step == null){
+            throw new IllegalArgumentException("The 'step' parameter must not be null or empty");
+        }
+
+        logger.info("Received approval response for procedure: " + procedureId + " and step: " + step);
 
         recoveryProcedureExecutor.approveRecovery(approvalResponse);
 

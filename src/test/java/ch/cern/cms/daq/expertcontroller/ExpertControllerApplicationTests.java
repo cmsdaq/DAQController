@@ -44,8 +44,6 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.post;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.hasSize;
 
 
 //TODO: add oneRequestTEset when condition finishes itself, add oneRequestTEset when interrupt from LV0
@@ -430,95 +428,6 @@ public class ExpertControllerApplicationTests {
         return approvalResponse;
     }
 
-    @Test
-    public void twoRequests() throws InterruptedException {
-
-        RecoveryRequest r = generateRecoveryRequest(10L);
-
-
-        /*
-         * 1st recovery request - accepted
-         */
-        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
-                .statusCode(equalTo(HttpStatus.CREATED.value()))
-                .body(
-                        "acceptanceDecision", equalTo("accepted"),
-                        "recoveryProcedureId", equalTo(1));
-
-        /* Check acceptanceDecision of current recovery*/
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
-                .body(
-                        "conditionIds", contains(10),
-                        "acceptanceDecision", equalTo("awaiting approval"));
-
-
-        /* Check whether recovery records are in database */
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage)));
-
-
-        /* Approve current request */
-        ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
-        stompSession.send(SEND_APPROVE, approvalResponse);
-
-        Thread.sleep(timeToExecute / 2);
-
-        /* Check recovery records in database */
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix)));
-
-        /* Check current acceptanceDecision*/
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
-                .body(
-                        "conditionIds", contains(10),
-                        //TODO:"acceptanceDecision", equalTo("awaiting approval"),
-                        "jobStatuses.find { it.stepIndex == 0 }.acceptanceDecision", equalTo("recovering"),
-                        "jobStatuses.find { it.stepIndex == 0 }.started", notNullValue(),
-                        "jobStatuses.find { it.stepIndex == 0 }.finished", nullValue(),
-                        "jobStatuses.find { it.stepIndex == 0 }.timesExecuted", is(0));
-
-
-        // The second one is not accepted, the other is being processed
-        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
-                .statusCode(equalTo(HttpStatus.CREATED.value()))
-                .body(
-                        "acceptanceDecision", equalTo("rejected"),
-                        "recoveryProcedureId", equalTo(2),
-                        "rejectedDueToConditionId", equalTo(10));
-
-//        given().get("/acceptanceDecision/2/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
-//                .body("acceptanceDecision", equalTo("rejected"));
-
-
-        Thread.sleep(timeToExecute / 2 + observePeriod / 2); // end up in the middle of observing period
-
-        given().get("/acceptanceDecision/").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()))
-                .body(
-                        "conditionIds", contains(10),
-                        "jobStatuses.find { it.stepIndex == 0 }.acceptanceDecision", equalTo("finished"),
-                        "jobStatuses.find { it.stepIndex == 0 }.started", notNullValue(),
-                        "jobStatuses.find { it.stepIndex == 0 }.finished", notNullValue(),
-                        "jobStatuses.find { it.stepIndex == 0 }.timesExecuted", is(1));
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)));
-
-        System.out.println("Sleeping ");
-        Thread.sleep(observePeriod); // make sure you pass another half of observing period
-        System.out.println("Slept ");
-
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage)));
-    }
 
     @Test
     @Ignore
@@ -640,78 +549,6 @@ public class ExpertControllerApplicationTests {
                 );
     }
 
-    /**
-     * 1st condition starts the recovery, than during observe period comes 2nd condition of the same type.
-     */
-    @Test
-    public void multipleRequestsResultInOneRecovery() throws InterruptedException {
-        RecoveryRequest r = generateRecoveryRequest(10L);
-
-        Assert.assertEquals("No approval requests at this point", 0, approvalRequests.size());
-        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
-                .statusCode(equalTo(HttpStatus.CREATED.value()))
-                .body(
-                        "acceptanceDecision", equalTo("accepted"),
-                        "recoveryProcedureId", equalTo(1));
-
-        //Thread.sleep(10000);
-        //Assert.assertEquals(1, approvalRequests.size());
-        //Assert.assertThat(approvalRequests, contains(hasProperty("recoveryProcedureId", is(1L))));
-        //approvalRequests.poll();
-
-        ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
-        stompSession.send(SEND_APPROVE, approvalResponse);
-
-        RecoveryRequest r2 = generateRecoveryRequest(11L);
-
-        given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
-                .statusCode(equalTo(HttpStatus.CREATED.value()))
-                .body(
-                        "acceptanceDecision", equalTo("rejected"),
-                        "recoveryProcedureId", equalTo(2));
-
-
-        // wait until job finishes and observe period starts
-        Thread.sleep(timeToExecute + observePeriod / 2);
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage)))
-                .body("end", contains(nullValue(), notNullValue(), notNullValue(), nullValue()));
-
-        r2.setSameProblem(true);
-        given().header(jsonHeader).body(r2).post("/recover").then().assertThat()
-                .statusCode(equalTo(HttpStatus.CREATED.value()))
-                .body(
-                        "acceptanceDecision", equalTo("acceptedToContinue"),
-                        "recoveryProcedureId", equalTo(3),
-                        "continuesTheConditionId", equalTo(10));
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage)))
-                .body("end", contains(nullValue(), notNullValue(), notNullValue(), notNullValue(), nullValue()));
-
-
-        //Assert.assertEquals(1, approvalRequests.size());
-        //Assert.assertThat(approvalRequests, contains(hasProperty("recoveryProcedureId", is(1L))));
-
-        ApprovalResponse approvalResponse2 = generateApprovalResponse(1L, 0);
-        stompSession.send(SEND_APPROVE, approvalResponse2);
-
-        Thread.sleep(observePeriod / 2);
-
-        given().queryParam("start", "2000-01-01T00:00:00Z")
-                .param("end", "3000-01-01T00:00:00Z").get("/records").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()))
-                .body("name", hasSize(6))
-                .body("name", contains(startsWith(recoveryPrefix), is(waitinMessage), startsWith(executingPrefix), is(observingMessage), is(waitinMessage), startsWith(executingPrefix)))
-                .body("end", contains(nullValue(), notNullValue(), notNullValue(), notNullValue(), notNullValue(), nullValue()));
-
-
-    }
 
     /**
      * 1st condition, the important one, finishes after recovery, during observe period comes 2nd condition, the less

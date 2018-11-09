@@ -99,10 +99,16 @@ public class Executor implements IExecutor {
         if(listener.getCurrentJob() == null){
             throw new IllegalStateException("Received approval when executor has no current job");
         }
+
+        Long defaultProcedureId = executedProcedure.getId();
+        Integer defaultStepIndex = listener.getCurrentJob().getStepIndex();
+
+        logger.info("Default procedure: " + defaultProcedureId + " with step:" + defaultStepIndex);
+
         // 1. check if response concerns the same recovery procedure and job
         boolean defaultJobContext =
-                executedProcedure.getId() == approvalResponse.getRecoveryProcedureId()
-                        && listener.getCurrentJob().getStepIndex() == approvalResponse.getStep();
+                defaultProcedureId.equals(approvalResponse.getRecoveryProcedureId())
+                        && defaultStepIndex.equals(approvalResponse.getStep());
 
         /* default job accepted */
         if (defaultJobContext && approvalResponse.getApproved()) {

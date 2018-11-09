@@ -61,13 +61,14 @@ public class DefaultRecoveryServiceTest {
         Answer<?> answer = new Answer<Object>() {
             @Override
             public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
-                System.out.println("lol");
+                RecoveryProcedure recoveryProcedure = invocationOnMock.getArgumentAt(0, RecoveryProcedure.class);
+                recoveryProcedure.setId(10001L);
                 return null;
             }
         };
 
         given(this.dashboardController.approve(any())).willReturn(null);
-        given(this.recoveryProcedureRepository.save(any(RecoveryProcedure.class))).willReturn(null);
+        given(this.recoveryProcedureRepository.save(any(RecoveryProcedure.class))).willAnswer(answer);
 
         recoveryJobShouldComplete = null;
     }
@@ -93,6 +94,7 @@ public class DefaultRecoveryServiceTest {
                                 .build())).build();
 
         RecoveryResponse recoveryResponse = recoveryService.submitRecoveryRequest(recoveryRequest);
+        long procedureId = recoveryResponse.getRecoveryProcedureId();
         Assert.assertEquals("accepted", recoveryResponse.getAcceptanceDecision());
 
         Assert.assertEquals("AwaitingApproval", recoveryService.getRecoveryServiceStatus().getExecutorState());
@@ -100,7 +102,7 @@ public class DefaultRecoveryServiceTest {
         recoveryService.submitApprovalDecision(
                 ApprovalResponse.builder()
                         .approved(true)
-                        .recoveryProcedureId(0L) //TODO: update after adding checks to ids
+                        .recoveryProcedureId(procedureId)
                         .step(0) // TODO: check what happens when different steps are selected
                         .build());
 
@@ -129,13 +131,16 @@ public class DefaultRecoveryServiceTest {
                 .recoverySteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("Test 1")
+                                .stepIndex(0)
                                 .build(),
 
                         RecoveryRequestStep.builder()
                                 .humanReadable("Test 2")
+                                .stepIndex(1)
                                 .build())).build();
 
         RecoveryResponse recoveryResponse = recoveryService.submitRecoveryRequest(recoveryRequest);
+        long procedureId = recoveryResponse.getRecoveryProcedureId();
         Assert.assertEquals("accepted", recoveryResponse.getAcceptanceDecision());
 
         Assert.assertEquals("AwaitingApproval", recoveryService.getRecoveryServiceStatus().getExecutorState());
@@ -145,7 +150,7 @@ public class DefaultRecoveryServiceTest {
         recoveryService.submitApprovalDecision(
                 ApprovalResponse.builder()
                         .approved(true)
-                        .recoveryProcedureId(0L) //TODO: update after adding checks to ids
+                        .recoveryProcedureId(procedureId)
                         .step(0)
                         .build());
 
@@ -163,8 +168,8 @@ public class DefaultRecoveryServiceTest {
         recoveryService.submitApprovalDecision(
                 ApprovalResponse.builder()
                         .approved(true)
-                        .recoveryProcedureId(0L) //TODO: update after adding checks to ids
-                        .step(1) //TODO: check what happend if different steps are accepted
+                        .recoveryProcedureId(procedureId)
+                        .step(1)
                         .build());
 
 
@@ -178,7 +183,7 @@ public class DefaultRecoveryServiceTest {
                 "Job Test 1 didn't fix the problem",
                 "Job Test 2 accepted",
                 "Job Test 2 completed",
-                "Recovery procedure finished successfully"),
+                "Recovery procedure completed successfully"),
                             recoveryService.getRecoveryServiceStatus()
                                     .getLastProcedureStatus().getActionSummary());
 

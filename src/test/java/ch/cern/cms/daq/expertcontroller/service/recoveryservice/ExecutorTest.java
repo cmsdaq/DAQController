@@ -46,7 +46,7 @@ public class ExecutorTest {
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Job J1 accepted",
                                           "Job J1 completed",
-                                          "Recovery procedure finished successfully"
+                                          "Recovery procedure completed successfully"
         ), result);
     }
 
@@ -66,7 +66,7 @@ public class ExecutorTest {
                                           "Job J1 didn't fix the problem",
                                           "Job J2 accepted",
                                           "Job J2 completed",
-                                          "Recovery procedure finished successfully"
+                                          "Recovery procedure completed successfully"
         ), result);
 
     }
@@ -159,7 +159,7 @@ public class ExecutorTest {
                         .actionSummary(Arrays.asList(
                                 "Job J accepted",
                                 "Job J completed",
-                                "Recovery procedure finished successfully"
+                                "Recovery procedure completed successfully"
                         )).build()
                 , status);
 
