@@ -34,16 +34,17 @@ public class ProbeRecoverySender {
     public void issueTestRecoverySequence(String subsystem) {
 
         RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest(subsystem);
-        recoveryRequest1.getRecoverySteps().iterator().next().setIssueTTCHardReset(true);
+        RecoveryRequestStep step = recoveryRequest1.getRecoverySteps().iterator().next();
+        step.setIssueTTCHardReset(true);
+        step.setHumanReadable("TTC hart reset test job");
         logger.info("Sending TTC Hard Reset reset");
         sendRequestAndApprove(recoveryRequest1);
         logger.info("TTC Hard Reset sent");
 
-        try {
-            Thread.sleep(observePeriod);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+    }
+
+
+    public void issueTestRecoverySequence2(String subsystem){
 
         RecoveryRequest recoveryRequest2 = generateEmptyRecoveryRequest(subsystem);
         if (subsystem != null) {
@@ -51,14 +52,19 @@ public class ProbeRecoverySender {
         }
 
         recoveryRequest2.setWithInterrupt(true);
-        logger.info("Requesting stop and start with ECAL green recycle");
+        logger.info("Requesting stop and start with " +subsystem+ " green recycle");
         sendRequestAndApprove(recoveryRequest2);
-        logger.info("Stop and start with ECAL green recycle sent");
+        logger.info("Stop and start with "+subsystem+" green recycle sent");
+
 
     }
 
     private void sendRequestAndApprove(RecoveryRequest recoveryRequest) {
         ResponseEntity<RecoveryResponse> response = expertController.requestRecovery(recoveryRequest);
+        logger.info("Recovery submitted." +
+                            " Status: " + response.getStatusCode() +
+                            " Acceptance decision: " + response.getBody().getAcceptanceDecision() +
+                            " Recovery procedure: " + response.getBody().getRecoveryProcedureId());
         Long recovery1Id = response.getBody().getRecoveryProcedureId();
 
         try {
@@ -67,21 +73,21 @@ public class ProbeRecoverySender {
             e.printStackTrace();
         }
 
-        ApprovalResponse ar = new ApprovalResponse();
-        ar.setRecoveryProcedureId(recovery1Id);
-        ar.setApproved(true);
-        ar.setStep(0);
+//        ApprovalResponse ar = new ApprovalResponse();
+//        ar.setRecoveryProcedureId(recovery1Id);
+//        ar.setApproved(true);
+//        ar.setStep(0);
+//
+//        logger.info("Sending test approval");
+//        dashboardController.approve(ar);
+//
+//        try {
+//            Thread.sleep(1000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
-        logger.info("Sending test approval");
-        dashboardController.approve(ar);
-
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        expertController.conditionFinished(recoveryRequest.getProblemId());
+//        expertController.conditionFinished(recoveryRequest.getProblemId());
 
     }
 

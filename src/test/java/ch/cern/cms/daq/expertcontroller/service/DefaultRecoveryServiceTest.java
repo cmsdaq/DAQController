@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service;
 
+import ch.cern.cms.daq.expertcontroller.ExpertControllerServletApplication;
 import ch.cern.cms.daq.expertcontroller.controller.DashboardController;
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequest;
@@ -24,9 +25,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -36,9 +36,8 @@ import java.util.stream.Collectors;
 import static org.mockito.BDDMockito.any;
 import static org.mockito.BDDMockito.given;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@ActiveProfiles("test")
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringBootTest(classes = {MockServicesProvider.class})
 public class DefaultRecoveryServiceTest {
 
     @MockBean
@@ -80,7 +79,7 @@ public class DefaultRecoveryServiceTest {
     }
 
     @Test
-    public void simpleProcedureTest() {
+    public void simpleProcedureTest() throws InterruptedException {
 
         recoveryJobShouldComplete = true;
         expectedObserveResult = FSMEvent.NoEffect;
@@ -96,6 +95,9 @@ public class DefaultRecoveryServiceTest {
         RecoveryResponse recoveryResponse = recoveryService.submitRecoveryRequest(recoveryRequest);
         long procedureId = recoveryResponse.getRecoveryProcedureId();
         Assert.assertEquals("accepted", recoveryResponse.getAcceptanceDecision());
+
+        // allow FSM to do transition - request is async
+        Thread.sleep(500);
 
         Assert.assertEquals("AwaitingApproval", recoveryService.getRecoveryServiceStatus().getExecutorState());
 
@@ -113,13 +115,13 @@ public class DefaultRecoveryServiceTest {
                 "Job Test 1 accepted",
                 "Job Test 1 completed",
                 "Job Test 1 didn't fix the problem",
-                "Job not found, recovery failed"),
+                "Next job not found, recovery failed"),
                             recoveryService.getRecoveryServiceStatus().getLastProcedureStatus().getActionSummary());
 
     }
 
     @Test
-    public void twoJobProcedureTest() {
+    public void twoJobProcedureTest() throws InterruptedException {
 
 
         recoveryJobShouldComplete = true;
@@ -142,6 +144,9 @@ public class DefaultRecoveryServiceTest {
         RecoveryResponse recoveryResponse = recoveryService.submitRecoveryRequest(recoveryRequest);
         long procedureId = recoveryResponse.getRecoveryProcedureId();
         Assert.assertEquals("accepted", recoveryResponse.getAcceptanceDecision());
+
+        // allow FSM to do transition - request is async
+        Thread.sleep(500);
 
         Assert.assertEquals("AwaitingApproval", recoveryService.getRecoveryServiceStatus().getExecutorState());
 
@@ -191,7 +196,7 @@ public class DefaultRecoveryServiceTest {
 
 }
 
-@Profile("test")
+@Import(ExpertControllerServletApplication.class)
 @Configuration
 class MockServicesProvider {
 
@@ -202,9 +207,10 @@ class MockServicesProvider {
         IExecutor executor = TestExecutorFactory.build(
                 TestExecutorFactory.approvalConsumerThatNeverAccepts,
                 recoveryJob -> {
+                    logger.info("Recovery job executing");
 
                     if (DefaultRecoveryServiceTest.recoveryJobShouldComplete == null) {
-                        throw new IllegalStateException("Control recoveryJobShouldComplete parameter");
+                        throw new IllegalStateException("Set up recoveryJobShouldComplete parameter");
                     }
 
                     if (DefaultRecoveryServiceTest.recoveryJobShouldComplete) {

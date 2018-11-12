@@ -52,6 +52,13 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
      */
     public RecoveryResponse submitRecoveryRequest(RecoveryRequest request) {
 
+        if(request == null){
+            throw new IllegalArgumentException("Recovery request cannot be empty");
+        }
+        if(request.getRecoverySteps() == null || request.getRecoverySteps().size() == 0){
+            throw new IllegalArgumentException("Recovery request should provide steps");
+        }
+
         logger.info("New request has been submitted " + request);
 
         RecoveryResponse response = new RecoveryResponse();
@@ -284,11 +291,20 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                                           .map(c -> RecoveryJob.builder()
                                                   .job(c.getHumanReadable())
                                                   .stepIndex(c.getStepIndex())
+                                                  .greenRecycle(c.getGreenRecycle())
+                                                  .redRecycle(c.getRedRecycle())
+                                                  .reset(c.getReset())
+                                                  .fault(c.getFault())
+                                                  .issueTTCHardReset(c.getIssueTTCHardReset())
                                                   .build())
                                           .collect(Collectors.toList()))
                         .problemTitle(recoveryRequest.getProblemTitle())
                         .problemIds(Arrays.asList(recoveryRequest.getProblemId()))
                         .build();
+
+        if(recoveryJob.getProcedure() == null || recoveryJob.getProcedure().size()==0){
+            throw new IllegalArgumentException("Recovery procedure has no jobs");
+        }
 
         return recoveryJob;
     }

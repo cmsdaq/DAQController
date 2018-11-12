@@ -22,6 +22,16 @@ public interface IExecutor {
      */
     List<String> start(RecoveryProcedure recoveryJob);
 
+
+    /**
+     * Submit new job to execute
+     *
+     * @param recoveryJob
+     * @param wait flag indicating whether the request should be executed synchronously
+     * @return summary of actions performed in recovery
+     */
+    List<String> start(RecoveryProcedure recoveryJob, boolean wait);
+
     /**
      * Approve given recovery step
      *

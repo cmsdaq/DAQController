@@ -30,9 +30,9 @@ public class ExecutorTest {
 
         List<RecoveryJob> list = new ArrayList<>();
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<String> result = executor.start(job);
+        List<String> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
-        Assert.assertEquals(Arrays.asList("Job not found, recovery failed"), result);
+        Assert.assertEquals(Arrays.asList("Next job not found, recovery failed"), result);
     }
 
     @Test
@@ -42,7 +42,7 @@ public class ExecutorTest {
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("J1").build());
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<String> result = executor.start(job);
+        List<String> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Job J1 accepted",
                                           "Job J1 completed",
@@ -58,7 +58,7 @@ public class ExecutorTest {
                 RecoveryJob.builder().job("J1").build(),
                 RecoveryJob.builder().job("J2").build());
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<String> result = executor.start(job);
+        List<String> result = executor.start(job,true);
         Assert.assertEquals(State.Idle, fsm.getState());
 
         Assert.assertEquals(Arrays.asList("Job J1 accepted",
@@ -77,7 +77,7 @@ public class ExecutorTest {
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("VLJ").build());
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<String> result = executor.start(job);
+        List<String> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Job VLJ accepted",
                                           "Job: VLJ times out"), result);
@@ -92,7 +92,7 @@ public class ExecutorTest {
 
         (new Thread() {
             public void run() {
-                List<String> result = executor.start(job);
+                List<String> result = executor.start(job, true);
             }
         }).start();
 
@@ -124,7 +124,7 @@ public class ExecutorTest {
                         .actionSummary(null).build()
                 , status);
 
-        new Thread(() -> executor.start(job)).start();
+        new Thread(() -> executor.start(job, true)).start();
 
         Thread.sleep(50); // Half the time to execute the job
 

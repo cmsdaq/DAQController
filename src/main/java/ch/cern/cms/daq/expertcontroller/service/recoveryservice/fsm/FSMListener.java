@@ -53,9 +53,13 @@ public class FSMListener implements IFSMListener {
         currentProcedure.getExecutedJobs().add(nextJob);
 
         if (nextJob != null) {
+
+            logger.info("Next job found: " + nextJob.getStepIndex() + ", "+ nextJob.getJob());
             currentJob = nextJob;
             return FSMEvent.NextJobFound;
         } else {
+
+            logger.info("Next job not found");
             return FSMEvent.NextJobNotFound;
         }
 
@@ -111,7 +115,7 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onNextJobNotFound() {
         logger.info("Next job not found");
-        reportSteps.add("Job not found, recovery failed");
+        reportSteps.add("Next job not found, recovery failed");
         finishProcedure();
         return FSMEvent.ReportStatus;
     }

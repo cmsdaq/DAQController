@@ -3,6 +3,7 @@ package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
+import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSM;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.IFSMListener;
@@ -11,7 +12,9 @@ import lombok.Builder;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rcms.fm.fw.service.command.CommandServiceException;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.*;
@@ -66,12 +69,12 @@ public class Executor implements IExecutor {
     protected ScheduledThreadPoolExecutor delayedFinishedSignals;
 
     /**
-     * Timeout period to approve the recovery job.
+     * Timeout period to approve the recovery job. In seconds.
      */
     protected Integer approvalTimeout;
 
     /**
-     * Timeout period for recovery job execution.
+     * Timeout period for recovery job execution. In seconds.
      */
     protected Integer executionTimeout;
 
@@ -80,12 +83,24 @@ public class Executor implements IExecutor {
 
     private static Logger logger = LoggerFactory.getLogger(Executor.class);
 
+    @Override
+    public List<String> start(RecoveryProcedure recoveryProcedure ){
+        return start(recoveryProcedure, false);
+    }
 
     @Override
-    public List<String> start(RecoveryProcedure recoveryProcedure) {
+    public List<String> start(RecoveryProcedure recoveryProcedure, boolean wait) {
         executedProcedure = recoveryProcedure;
         listener.setCurrentProcedure(recoveryProcedure);
-        fsm.transition(FSMEvent.RecoveryStarts);
+        Thread thread = new Thread(()-> fsm.transition(FSMEvent.RecoveryStarts));
+        thread.start();
+        if(wait) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         return listener.getSummary();
     }
 
@@ -173,20 +188,24 @@ public class Executor implements IExecutor {
 
     @Override
     public FSMEvent callRecoveryExecutionConsumer(RecoveryJob recoveryJob) {
-        Future<FSMEvent> future = executorService.submit(() -> jobConsumer.apply(recoveryJob));
         try {
+            Future<FSMEvent> future = executorService.submit(() -> jobConsumer.apply(recoveryJob));
             return future.get(executionTimeout, TimeUnit.SECONDS);
         }
         // exception will be thrown only on external interrupt
         catch (InterruptedException e) {
             logger.info("Recovery job timeouts. Limit is " + executionTimeout + " seconds");
             return FSMEvent.Interrupt;
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-            return FSMEvent.Exception;
         } catch (TimeoutException e) {
             logger.info("Recovery job timeouts. Limit is " + executionTimeout + " seconds");
             return FSMEvent.Timeout;
+        }catch (CancellationException e) {
+            logger.info("Canelled");
+            return FSMEvent.Exception;
+        } catch (ExecutionException e) {
+            logger.info("Exception");
+            e.printStackTrace();
+            return FSMEvent.Exception;
         }
     }
 

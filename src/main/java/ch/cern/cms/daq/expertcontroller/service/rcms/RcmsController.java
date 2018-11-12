@@ -3,17 +3,18 @@ package ch.cern.cms.daq.expertcontroller.service.rcms;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import rcms.fm.fw.service.command.CommandServiceException;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 
-@Component("rcms")
+@Service
 public class RcmsController {
 
     private static Logger logger = Logger.getLogger(RcmsController.class);
-
 
     @Value("${rcms.uri}")
     private String AUTOMATOR_URI;
@@ -21,12 +22,12 @@ public class RcmsController {
     @Value("${l0.uri}")
     private String L0_URI;
 
+    @Value("${rcms.uri}")
+    private String senderURI;
+
     public String getSubsystemStatus() {
         return null;
     }
-
-    @Value("${rcms.uri}")
-    private String senderURI;
 
 
     public RcmsController() {
@@ -35,14 +36,20 @@ public class RcmsController {
     }
 
 
-    public void execute(RecoveryJob recoveryJob) throws LV0AutomatorControlException {
+    public void execute(RecoveryJob recoveryJob) throws LV0AutomatorControlException, CommandServiceException {
 
+        logger.debug("Recovery job submitted to RCMS controller: " + recoveryJob);
         // check if this is a ttchr request
         if (isTTCHardResetOnlyRequest(recoveryJob)) {
+            logger.debug("Request generates TTC Hard Reset");
             sendTTCHardReset();
-        } else {
+        }
+        // TODO: check if this should be executed
+        if (isLongRecovery(recoveryJob)) {
+            logger.debug("Request generates recover & wait");
             recoverAndWait(recoveryJob);
         }
+
     }
 
     private boolean isTTCHardResetOnlyRequest(RecoveryJob recoveryJob) {
@@ -62,13 +69,26 @@ public class RcmsController {
         }
     }
 
+    private boolean isLongRecovery(RecoveryJob recoveryJob) {
+        if (recoveryJob.getGreenRecycle() != null && recoveryJob.getGreenRecycle().size() > 0) {
+            return true;
+        }
+        if (recoveryJob.getRedRecycle() != null && recoveryJob.getRedRecycle().size() > 0) {
+            return true;
+        }
+        if (recoveryJob.getReset() != null && recoveryJob.getReset().size() > 0) {
+            return true;
+        }
+        return false;
+    }
+
     // TODO: change to private/protected
-    public void sendTTCHardReset() throws LV0AutomatorControlException {
+    public void sendTTCHardReset() throws CommandServiceException, LV0AutomatorControlException {
         logger.info("Issuing TTCHardReset");
         L0Controller controller = new L0Controller(senderURI);
         controller.addURI(L0_URI);
-        boolean successfully = controller.sendTTCHardReset();
-        logger.info("TTCHardReset executed " + (successfully ? "successfully" : "unsuccessfully"));
+        controller.sendTTCHardReset();
+        logger.info("TTCHardReset executed");
     }
 
     protected void recoverAndWait(RecoveryJob recoveryJob) throws LV0AutomatorControlException {
