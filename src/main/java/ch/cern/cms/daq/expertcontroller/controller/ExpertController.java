@@ -85,16 +85,25 @@ public class ExpertController {
     /**
      * Endpoint to schedule test recovery
      *
+     * @return confirmation message
+     */
+    @RequestMapping(value = "/fire-ttchr", method = RequestMethod.GET)
+    public ResponseEntity<RecoveryResponse> testTTCHR() {
+        logger.info("Issuing test TTC hard reset");
+        return probeRecoverySender.issueTTCHardReset();
+    }
+
+    /**
+     * Endpoint to schedule test recovery
+     *
      * @param subsystem subsystem to which test recovery will be applied
      * @return confirmation message
      */
-    @RequestMapping(value = "/fire-test-recovery", method = RequestMethod.GET)
-    public String testRecovery(@RequestParam(value = "subsystem", required = false) String subsystem) {
-        logger.info("Issuing test recovery sequence");
-        probeRecoverySender.issueTestRecoverySequence(subsystem);
-        return "Probe test recovery sequence completed";
+    @RequestMapping(value = "/fire-recovery", method = RequestMethod.GET)
+    public ResponseEntity<RecoveryResponse> testRecovery(@RequestParam(value = "subsystem") String subsystem) {
+        logger.info("Issuing test recovery");
+        return probeRecoverySender.issueRecovery(subsystem);
     }
-
 
     /**
      * Endpoint to get acceptanceDecision of a given recovery. Id corresponds to Recovery record.
@@ -138,7 +147,7 @@ public class ExpertController {
     }
 
     @RequestMapping(value = "/interrupt", method = RequestMethod.GET)
-    public void interrupt(){
+    public void interrupt() {
         recoveryService.interrupt();
     }
 

@@ -13,7 +13,6 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 /**
  * This is to configure the application for the usage in webapplication servlet - tomcat.
@@ -56,7 +55,7 @@ public class ExpertControllerServletApplication extends SpringBootServletInitial
 
             if(runTestCommands!= null && runTestCommands) {
                 logger.info("Test commands enabled");
-                probeRecoverySender.issueTestRecoverySequence(null);
+                probeRecoverySender.issueTTCHardReset();
 
             } else{
                 logger.info("Test commands disabled");
