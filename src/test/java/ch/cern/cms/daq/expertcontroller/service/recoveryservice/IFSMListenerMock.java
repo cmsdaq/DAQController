@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
+import ch.cern.cms.daq.expertcontroller.entity.Event;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
@@ -83,6 +84,12 @@ class IFSMListenerMock implements IFSMListener {
     }
 
     @Override
+    public FSMEvent onJobException() {
+        System.out.println("on job exception");
+        return null;
+    }
+
+    @Override
     public FSMEvent onFinished() {
         System.out.println("on finished");
         return null;
@@ -112,7 +119,7 @@ class IFSMListenerMock implements IFSMListener {
     }
 
     @Override
-    public List<String> getSummary() {
+    public List<Event> getSummary() {
         return null;
     }
 }

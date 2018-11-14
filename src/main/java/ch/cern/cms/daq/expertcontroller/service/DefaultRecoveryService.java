@@ -9,13 +9,18 @@ import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutorStatus;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
 import org.apache.log4j.Logger;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.sql.Date;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,8 +43,15 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
      */
     private RecoveryRequest waitingRequest;
 
+
+    protected ScheduledThreadPoolExecutor delayedFinishedSignals;
+
     private final static Logger logger = Logger.getLogger(DefaultRecoveryService.class);
 
+    @PostConstruct
+    private void init(){
+        delayedFinishedSignals = new ScheduledThreadPoolExecutor(1);
+    }
 
     /**
      * Submit new recovery request. This method will handle everything from filtering the request, requesting operator
@@ -52,14 +64,17 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
      */
     public RecoveryResponse submitRecoveryRequest(RecoveryRequest request) {
 
-        if(request == null){
+        if (request == null) {
             throw new IllegalArgumentException("Recovery request cannot be empty");
         }
-        if(request.getRecoverySteps() == null || request.getRecoverySteps().size() == 0){
+        if (request.getRecoveryRequestSteps() == null || request.getRecoveryRequestSteps().size() == 0) {
             throw new IllegalArgumentException("Recovery request should provide steps");
         }
+        if (request.getRecoveryRequestSteps().stream().map(s -> s.getStepIndex()).filter(s -> s == null).count() > 0) {
+            throw new IllegalArgumentException("Every recovery step in procedure should have 'stepIndex' assigned");
+        }
 
-        logger.info("New request has been submitted " + request);
+        logger.debug("New request has been submitted " + request);
 
         RecoveryResponse response = new RecoveryResponse();
         String acceptanceDecision = acceptRecoveryRequestForExecution(request);
@@ -71,20 +86,14 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             case "accepted":
                 logger.info("Accepted recovery request: " + request);
                 RecoveryProcedure recoveryProcedure = createRecoveryProcedure(request);
-
-                //TODO: thread should be spanned here - isn't it now?
-
-                recoveryProcedure.setStart(OffsetDateTime.now());
                 recoveryProcedureRepository.save(recoveryProcedure);
-                logger.info("New procedure has been persisted with id " + recoveryProcedure.getId());
+                logger.debug("New procedure has been persisted with id " + recoveryProcedure.getId());
                 recoveryProcedureExecutor.start(recoveryProcedure);
                 response.setRecoveryProcedureId(recoveryProcedure.getId());
 
                 break;
             case "acceptedWithPreemption":
                 logger.info("Accepted with preemption recovery " + request);
-
-                //TODO: save preempted? preemptedProblems.add(currentRequest.getProblemId());
                 recoveryProcedureExecutor.interrupt();
 
                 RecoveryProcedure preemptedProcedure = recoveryProcedureExecutor.getExecutedProcedure();
@@ -92,9 +101,9 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 logger.info("Preempted procedure has been updated in db");
 
                 RecoveryProcedure preemptingProcedure = createRecoveryProcedure(request);
-                recoveryProcedureExecutor.start(preemptingProcedure);
                 recoveryProcedureRepository.save(preemptingProcedure);
                 logger.info("Preempting procedure has been persisted with id " + preemptedProcedure.getId());
+                recoveryProcedureExecutor.start(preemptingProcedure);
 
                 response.setRecoveryProcedureId(preemptingProcedure.getId());
                 break;
@@ -130,7 +139,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 break;
         }
 
-        logger.info("Request " + request + " has been " + acceptanceDecision);
+        logger.info("Request " + request + " has been handled with " + acceptanceDecision);
         return response;
 
     }
@@ -151,7 +160,13 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             // TODO: set up procedure id
             // TODO: set up related conditions
             // TODO: set up recovery requests
-            builder.actionSummary(status.getActionSummary());
+
+
+            ModelMapper modelMapper = new ModelMapper();
+            modelMapper.getConfiguration()
+                    .setMatchingStrategy(MatchingStrategies.STRICT);
+            List<Event> executorStatus = modelMapper.map(status.getActionSummary(), List.class);
+            builder.actionSummary(executorStatus);
 
         }
         return builder.build();
@@ -199,7 +214,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
 
         // Following parameters will be handled differently depending on status of the executor
-        List<String> actionSummary = null;
+        List<ch.cern.cms.daq.expertcontroller.entity.Event> actionSummary = null;
         String finalStatus = null;
         boolean existLastProcedure = false;
 
@@ -212,16 +227,26 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
         /* If finished - take last procedure (if exists) details from procedure object */
         else if (State.Idle == status.getState() && lastExecutedProcedure != null) {
-            actionSummary = lastExecutedProcedure.getEventSummary().stream().map(c -> c.getContent()).collect(Collectors.toList());
+            actionSummary = lastExecutedProcedure.getEventSummary();
             finalStatus = lastExecutedProcedure.getState();
             existLastProcedure = true;
         }
 
 
         if (existLastProcedure) {
-            recoveryProcedureStatus.setActionSummary(actionSummary);
+            ModelMapper modelMapper = new ModelMapper();
+            modelMapper.getConfiguration()
+                    .setMatchingStrategy(MatchingStrategies.STRICT);
+
+            List<Event> actionSummaryDTO =
+                    actionSummary.stream()
+                            .map(e -> modelMapper.map(e, ch.cern.cms.daq.expertcontroller.datatransfer.Event.class))
+                            .collect(Collectors.toList());
+
+            recoveryProcedureStatus.setActionSummary(actionSummaryDTO);
             recoveryProcedureStatus.setFinalStatus(finalStatus);
             recoveryProcedureStatus.setId(lastExecutedProcedure.getId());
+            recoveryProcedureStatus.setConditionIds(lastExecutedProcedure.getProblemIds());
             builder.lastProcedureStatus(recoveryProcedureStatus);
         }
         return builder.build();
@@ -246,7 +271,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         if (approvalResponse.getApproved() == null) {
             throw new IllegalArgumentException("The 'approved' parameter must not be null or empty");
         }
-        if(step == null){
+        if (step == null) {
             throw new IllegalArgumentException("The 'step' parameter must not be null or empty");
         }
 
@@ -285,9 +310,9 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
     //TODO: convert Recovery Request to Recovery Procedure
     private RecoveryProcedure createRecoveryProcedure(RecoveryRequest recoveryRequest) {
-        RecoveryProcedure recoveryJob =
+        RecoveryProcedure recoveryProcedure =
                 RecoveryProcedure.builder().
-                        procedure(recoveryRequest.getRecoverySteps().stream()
+                        procedure(recoveryRequest.getRecoveryRequestSteps().stream()
                                           .map(c -> RecoveryJob.builder()
                                                   .job(c.getHumanReadable())
                                                   .stepIndex(c.getStepIndex())
@@ -302,11 +327,13 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                         .problemIds(Arrays.asList(recoveryRequest.getProblemId()))
                         .build();
 
-        if(recoveryJob.getProcedure() == null || recoveryJob.getProcedure().size()==0){
+        if (recoveryProcedure.getProcedure() == null || recoveryProcedure.getProcedure().size() == 0) {
             throw new IllegalArgumentException("Recovery procedure has no jobs");
         }
 
-        return recoveryJob;
+        logger.info("Procedure built: " + recoveryProcedure);
+
+        return recoveryProcedure;
     }
 
     /**
@@ -385,7 +412,12 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 if (Arrays.asList(State.Observe, State.SelectingJob, State.AwaitingApproval, State.Recovering).contains(executorState)) {
 
                     logger.info("Executor in " + executorState + " state. Handling finish signal.");
-                    recoveryProcedureExecutor.finished();
+
+                    boolean accepted = recoveryProcedureExecutor.finished();
+
+                    if (!accepted){
+                        delayedFinishedSignals.schedule(() -> this.finished(id), 1, TimeUnit.SECONDS);
+                    }
                 } else {
                     logger.info("Finish signal will be ignored in current executor state: " + executorState);
                 }
@@ -411,12 +443,16 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     }
 
     @Override
-    public void interrupt() {
+    public InterruptResponse interrupt() {
         logger.info("Handling interrupting signal");
-        if(recoveryProcedureExecutor.getStatus().getState() != State.Idle) {
+        if (recoveryProcedureExecutor.getStatus().getState() != State.Idle) {
             recoveryProcedureExecutor.interrupt();
+            return InterruptResponse.builder().status("accepted").message("").build();
         } else {
             logger.info("Executor is in idle state, ignoring interrupt signal");
+            return InterruptResponse.builder()
+                    .status("ignored")
+                    .message("Executor is in idle state, ignoring interrupt signal").build();
         }
     }
 }

@@ -51,6 +51,10 @@ public enum FSMEvent {
 
     Exception,
 
+
+    JobException,
+
+
     /**
      * Problem that has been a reason to recover has finished due to controller recovery
      */

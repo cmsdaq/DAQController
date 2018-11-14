@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm;
 
+import ch.cern.cms.daq.expertcontroller.entity.Event;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
@@ -11,7 +12,12 @@ import org.slf4j.LoggerFactory;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
+/**
+ * This class listens to events in FSM. It is only reactive. It doesn't initiate any actions.
+ * It's purpose is to observe, report, persit events and transitions
+ */
 @Builder
 public class FSMListener implements IFSMListener {
 
@@ -24,8 +30,9 @@ public class FSMListener implements IFSMListener {
     @Getter
     private RecoveryJob currentJob;
 
-    List<String> reportSteps;
+    List<Event> reportSteps;
 
+    private Consumer<RecoveryProcedure> persistResultsConsumer;
 
     private static Logger logger = LoggerFactory.getLogger(FSMListener.class);
 
@@ -33,28 +40,30 @@ public class FSMListener implements IFSMListener {
         this.executor = executor;
     }
 
+    public List<Event> getSummary() {
+        return reportSteps;
+    }
 
     @Override
     public void setCurrentProcedure(RecoveryProcedure currentProcedure) {
         this.currentProcedure = currentProcedure;
     }
 
-    @Override
-    public List<String> getSummary() {
-        return reportSteps;
-    }
-
     private FSMEvent selectNextJob() {
+        if (currentProcedure.getProcedure() == null) {
+            throw new IllegalStateException("Recovery procedure has no steps defined");
+        }
+
         RecoveryJob nextJob = currentProcedure.getNextJob();
 
-        if(currentProcedure.getExecutedJobs() == null){
+        if (currentProcedure.getExecutedJobs() == null) {
             currentProcedure.setExecutedJobs(new ArrayList<>());
         }
         currentProcedure.getExecutedJobs().add(nextJob);
 
         if (nextJob != null) {
 
-            logger.info("Next job found: " + nextJob.getStepIndex() + ", "+ nextJob.getJob());
+            logger.info("Next job found: " + nextJob.getStepIndex() + ", " + nextJob.getJob());
             currentJob = nextJob;
             return FSMEvent.NextJobFound;
         } else {
@@ -72,6 +81,19 @@ public class FSMListener implements IFSMListener {
         logger.info("Recovery of current procedure "
                             + currentProcedure.getId() + ":"
                             + currentProcedure.getProblemTitle() + " starts");
+
+        OffsetDateTime startTime = OffsetDateTime.now();
+
+        reportSteps.add(Event.builder()
+                                .content("Procedure starts")
+                                .date(startTime)
+                                .type("processing")
+                                .build());
+
+
+        currentProcedure.setStart(startTime);
+        onUpdateProcedure();
+
         return selectNextJob();
     }
 
@@ -79,29 +101,60 @@ public class FSMListener implements IFSMListener {
     public FSMEvent onJobAccepted() {
         logger.info("Job accepted. Passing to job consumer");
 
-        reportSteps.add("Job " + currentJob.getJob() + " accepted");
+        reportSteps.add(Event.builder()
+                                .content("Job " + currentJob.getJob() + " accepted")
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
+        currentJob.setStart(OffsetDateTime.now());
+
+        if (currentJob.getExecutionCount() == null)
+            currentJob.setExecutionCount(0);
+
+        currentJob.setEnd(null);
+        onUpdateProcedure();
         return executor.callRecoveryExecutionConsumer(currentJob);
     }
 
     @Override
     public FSMEvent onJobCompleted() {
 
-        // TODO: need to provide some better reporting that simple string
-        reportSteps.add("Job " + currentJob.getJob() + " completed");
+        reportSteps.add(Event.builder()
+                                .content("Job " + currentJob.getJob() + " completed")
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
+
+        currentJob.setEnd(OffsetDateTime.now());
+
+        Integer executionCount = currentJob.getExecutionCount();
+        currentJob.setExecutionCount(executionCount + 1);
+
+        onUpdateProcedure();
         return executor.callObservationConsumer();
     }
 
     @Override
     public FSMEvent onJobNoEffect() {
 
-        reportSteps.add("Job " + currentJob.getJob() + " didn't fix the problem");
+        reportSteps.add(Event.builder()
+                                .content("Job " + currentJob.getJob() + " didn't fix the problem")
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
+        onUpdateProcedure();
         return selectNextJob();
     }
 
     @Override
     public FSMEvent onRecoveryFailed() {
-        reportSteps.add("Recovery procedure failed");
-        finishProcedure();
+        reportSteps.add(Event.builder()
+                                .content("Recovery procedure failed")
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
+        onUpdateProcedure();
+        onFinishProcedure();
         return FSMEvent.ReportStatus;
     }
 
@@ -115,8 +168,13 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onNextJobNotFound() {
         logger.info("Next job not found");
-        reportSteps.add("Next job not found, recovery failed");
-        finishProcedure();
+        reportSteps.add(Event.builder()
+                                .content("Next job not found, recovery failed")
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
+        onUpdateProcedure();
+        onFinishProcedure();
         return FSMEvent.ReportStatus;
     }
 
@@ -128,43 +186,104 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onTimeout() {
-        reportSteps.add("Job: " + currentJob.getJob() + " times out");
-        finishProcedure();
+        reportSteps.add(Event.builder()
+                                .content("Job: " + currentJob.getJob() + " times out")
+                                .date(OffsetDateTime.now())
+                                .type("timeout")
+                                .build());
+        onUpdateProcedure();
+        onFinishProcedure();
         return FSMEvent.ReportStatus;
     }
 
     @Override
     public FSMEvent onException() {
-        reportSteps.add("Recovery procedure finished with exception");
-        finishProcedure();
+        reportSteps.add(Event.builder()
+                                .content("Recovery procedure finished with exception")
+                                .date(OffsetDateTime.now())
+                                .type("exception")
+                                .build());
+
+        if(currentJob != null && currentJob.getEnd() == null){
+            currentJob.setEnd(OffsetDateTime.now());
+        }
+        onUpdateProcedure();
+        onFinishProcedure();
         return FSMEvent.ReportStatus;
     }
 
     @Override
+    public FSMEvent onJobException() {
+        currentJob.setEnd(OffsetDateTime.now());
+
+        Integer executionCount = currentJob.getExecutionCount();
+        currentJob.setExecutionCount(executionCount + 1);
+
+        reportSteps.add(Event.builder()
+                                .content("Job "+ currentJob.getJob()+" finished with exception")
+                                .date(OffsetDateTime.now())
+                                .type("exception")
+                                .build());
+
+        return selectNextJob();
+
+    }
+
+    @Override
     public FSMEvent onFinished() {
-        reportSteps.add("Recovery procedure completed successfully");
-        finishProcedure();
+        reportSteps.add(Event.builder()
+                                .content("Recovery procedure completed successfully")
+                                .date(OffsetDateTime.now())
+                                .type("finish")
+                                .build());
+        onUpdateProcedure();
+        onFinishProcedure();
         return FSMEvent.ReportStatus;
     }
 
     @Override
     public FSMEvent onInterrupted() {
-        //TODO: stop any ongoing action
-        reportSteps.add("Recovery procedure has been interrupted");
-        finishProcedure();
+        reportSteps.add(Event.builder()
+                                .content("Recovery procedure has been interrupted")
+                                .date(OffsetDateTime.now())
+                                .type("interrupt")
+                                .build());
+
+        if (currentJob != null && currentJob.getEnd() == null) {
+            currentJob.setEnd(OffsetDateTime.now());
+        }
+        onUpdateProcedure();
+        onFinishProcedure();
         return FSMEvent.ReportStatus;
     }
 
     @Override
     public FSMEvent onCancelled() {
-        reportSteps.add("Recovery procedure has been cancelled");
-        finishProcedure();
+        reportSteps.add(Event.builder()
+                                .content("Recovery procedure has been cancelled")
+                                .date(OffsetDateTime.now())
+                                .type("cancellation")
+                                .build());
+        onUpdateProcedure();
+        onFinishProcedure();
         return FSMEvent.ReportStatus;
     }
 
-    private void finishProcedure(){
+    private void onFinishProcedure() {
         currentProcedure.setEnd(OffsetDateTime.now());
         currentProcedure.setState(executor.getStatus().getState().toString());
+
+        if (persistResultsConsumer != null)
+            persistResultsConsumer.accept(currentProcedure);
+
+    }
+
+    private void onUpdateProcedure() {
+        currentProcedure.setState(executor.getStatus().getState().toString());
+        currentProcedure.setEventSummary(getSummary());
+
+        if (persistResultsConsumer != null)
+            persistResultsConsumer.accept(currentProcedure);
 
     }
 

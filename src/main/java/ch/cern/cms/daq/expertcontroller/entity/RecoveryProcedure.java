@@ -67,7 +67,7 @@ public class RecoveryProcedure {
     //TODO: is it good place for this?
     public RecoveryJob getNextJob() {
         if (procedure == null) {
-            throw new IllegalStateException("Recovery procedure has no steps defined");
+            return null;
         }
 
         if (iterator == null) {

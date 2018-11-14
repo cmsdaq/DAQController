@@ -2,11 +2,7 @@ package ch.cern.cms.daq.expertcontroller.service;
 
 import ch.cern.cms.daq.expertcontroller.ExpertControllerServletApplication;
 import ch.cern.cms.daq.expertcontroller.controller.DashboardController;
-import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequest;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryRequestStep;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryResponse;
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.datatransfer.*;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
@@ -86,10 +82,11 @@ public class DefaultRecoveryServiceTest {
 
         RecoveryRequest recoveryRequest = RecoveryRequest.builder()
                 .problemTitle("Test problem")
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .redRecycle(new HashSet<>(Arrays.asList("T")))
                                 .humanReadable("Test 1")
+                                .stepIndex(0)
                                 .build())).build();
 
         RecoveryResponse recoveryResponse = recoveryService.submitRecoveryRequest(recoveryRequest);
@@ -108,15 +105,21 @@ public class DefaultRecoveryServiceTest {
                         .step(0) // TODO: check what happens when different steps are selected
                         .build());
 
-        Assert.assertEquals("Idle", recoveryService.getRecoveryServiceStatus().getExecutorState());
+        RecoveryServiceStatus status = recoveryService.getRecoveryServiceStatus();
+
+        Assert.assertEquals("Idle", status.getExecutorState());
+
+        List<Event> actionSummary = status.getLastProcedureStatus().getActionSummary();
+
 
 
         Assert.assertEquals(Arrays.asList(
+                "Procedure starts",
                 "Job Test 1 accepted",
                 "Job Test 1 completed",
                 "Job Test 1 didn't fix the problem",
                 "Next job not found, recovery failed"),
-                            recoveryService.getRecoveryServiceStatus().getLastProcedureStatus().getActionSummary());
+                            actionSummary.stream().map(c -> c.getContent()).collect(Collectors.toList()));
 
     }
 
@@ -130,7 +133,7 @@ public class DefaultRecoveryServiceTest {
 
         RecoveryRequest recoveryRequest = RecoveryRequest.builder()
                 .problemTitle("Two steps procedure")
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("Test 1")
                                 .stepIndex(0)
@@ -163,10 +166,12 @@ public class DefaultRecoveryServiceTest {
         Assert.assertEquals("AwaitingApproval",
                             recoveryService.getRecoveryServiceStatus().getExecutorState());
         Assert.assertEquals(Arrays.asList(
+                "Procedure starts",
                 "Job Test 1 accepted",
                 "Job Test 1 completed",
                 "Job Test 1 didn't fix the problem"),
-                            recoveryService.getRecoveryServiceStatus().getLastProcedureStatus().getActionSummary());
+                            recoveryService.getRecoveryServiceStatus().getLastProcedureStatus().getActionSummary()
+                                    .stream().map(c -> c.getContent()).collect(Collectors.toList()));
 
 
         expectedObserveResult = FSMEvent.Finished;
@@ -183,6 +188,7 @@ public class DefaultRecoveryServiceTest {
 
         Assert.assertNotNull(recoveryService.getRecoveryServiceStatus().getLastProcedureStatus());
         Assert.assertEquals(Arrays.asList(
+                "Procedure starts",
                 "Job Test 1 accepted",
                 "Job Test 1 completed",
                 "Job Test 1 didn't fix the problem",
@@ -190,7 +196,8 @@ public class DefaultRecoveryServiceTest {
                 "Job Test 2 completed",
                 "Recovery procedure completed successfully"),
                             recoveryService.getRecoveryServiceStatus()
-                                    .getLastProcedureStatus().getActionSummary());
+                                    .getLastProcedureStatus().getActionSummary()
+                                    .stream().map(c -> c.getContent()).collect(Collectors.toList()));
 
     }
 
@@ -223,16 +230,14 @@ class MockServicesProvider {
                 (r, s) -> {
                     System.out.println("Result: " + s);
 
-                    List<Event> eventList = s.stream()
-                            .map(e -> Event.builder().content(e).build())
-                            .collect(Collectors.toList());
-
-                    r.setEventSummary(eventList);
+                    r.setEventSummary(s);
 
                 },
                 () -> DefaultRecoveryServiceTest.expectedObserveResult,
                 1,
-                1
+                1,
+                TestExecutorFactory.printRecoveryProcedurePersistor,
+                TestExecutorFactory.interruptConsumer
         );
         return executor;
 

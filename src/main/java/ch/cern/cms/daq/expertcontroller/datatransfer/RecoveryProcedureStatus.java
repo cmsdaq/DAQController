@@ -11,7 +11,8 @@ import java.util.List;
  */
 @Data
 @Builder
-public class RecoveryProcedureStatus {
+public class
+RecoveryProcedureStatus {
 
     /**
      * Id of the recovery procedure. Identifies the recovery as understood by controller
@@ -23,7 +24,7 @@ public class RecoveryProcedureStatus {
     /**
      * Action summary. What has been already done in this recovery.
      */
-    List<String> actionSummary;
+    List<Event> actionSummary;
 
     /**
      * Final status of the Recovery Procedure, one of FSM final entries (completed/failed/cancelled)

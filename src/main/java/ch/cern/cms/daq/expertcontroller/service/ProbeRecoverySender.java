@@ -29,7 +29,7 @@ public class ProbeRecoverySender {
 
         RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest(1);
         recoveryRequest1.setProblemTitle("Probe problem");
-        RecoveryRequestStep step = recoveryRequest1.getRecoverySteps().iterator().next();
+        RecoveryRequestStep step = recoveryRequest1.getRecoveryRequestSteps().iterator().next();
         step.setIssueTTCHardReset(true);
         step.setHumanReadable("TTC hard reset test job");
         logger.info("Sending TTC Hard Reset reset");
@@ -51,16 +51,19 @@ public class ProbeRecoverySender {
             recoveryRequest2.setProblemTitle("Probe problem of " + subsystem);
         }
 
-        Iterator<RecoveryRequestStep> iterator = recoveryRequest2.getRecoverySteps().iterator();
+        Iterator<RecoveryRequestStep> iterator = recoveryRequest2.getRecoveryRequestSteps().iterator();
 
         RecoveryRequestStep step1 = iterator.next();
         RecoveryRequestStep step2 = iterator.next();
 
         step1.getGreenRecycle().add(subsystem);
         step1.setHumanReadable("Green recycle " + subsystem);
+        step1.getReset().add("HCAL");
+        step1.getFault().add(subsystem);
 
         step2.getRedRecycle().add(subsystem);
         step2.setHumanReadable("Red recycle " + subsystem);
+        step1.getFault().add(subsystem);
 
         logger.info("Requesting stop and start with " +subsystem+ " green recycle");
         ResponseEntity<RecoveryResponse> response = sendRecoveryRequest(recoveryRequest2);
@@ -108,7 +111,7 @@ public class ProbeRecoverySender {
         final Long id = problemId++;
         RecoveryRequest recoveryRequest = RecoveryRequest.builder()
                 .problemId(id)
-                .recoverySteps(new ArrayList<>())
+                .recoveryRequestSteps(new ArrayList<>())
                 .build();
 
         for(int i = 0; i < steps; i++) {
@@ -119,7 +122,7 @@ public class ProbeRecoverySender {
                     .reset(new HashSet<>())
                     .build();
             step1.setStepIndex(i);
-            recoveryRequest.getRecoverySteps().add(step1);
+            recoveryRequest.getRecoveryRequestSteps().add(step1);
 
         }
         return recoveryRequest;

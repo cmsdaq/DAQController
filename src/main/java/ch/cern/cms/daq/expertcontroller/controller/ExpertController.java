@@ -50,22 +50,28 @@ public class ExpertController {
 
         logger.info("New recovery request for problem: " + request.getProblemId() + " " + request.getProblemTitle());
 
-        if (request.getRecoverySteps() == null || request.getRecoverySteps().size() == 0) {
+        try {
+            RecoveryResponse response = recoveryService.submitRecoveryRequest(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (IllegalArgumentException e) {
+
+            logger.warn("Bad request: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); //TODO might be useful to describe why bad request
+
         }
 
-        RecoveryResponse response = recoveryService.submitRecoveryRequest(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @RequestMapping(value = "/service-status", method = RequestMethod.GET)
     public RecoveryServiceStatus getRecoveryServiceStatus() {
+        logger.info("Service status request");
         return recoveryService.getRecoveryServiceStatus();
     }
 
     @RequestMapping(value = "/procedure-status/{id}", method = RequestMethod.GET)
     public RecoveryProcedureStatus getRecoveryProcedureStatus(@PathVariable Long id) {
+        logger.info("Procedure status request: " + id);
         return recoveryService.getRecoveryProcedureStatus(id);
     }
 
@@ -147,8 +153,15 @@ public class ExpertController {
     }
 
     @RequestMapping(value = "/interrupt", method = RequestMethod.GET)
-    public void interrupt() {
-        recoveryService.interrupt();
+    public InterruptResponse interrupt() {
+        return recoveryService.interrupt();
+    }
+
+    @RequestMapping(value = "/procedures", method = RequestMethod.GET)
+    public List<ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryProcedure> getProcedures(
+            @RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime start,
+            @RequestParam("end") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime end) {
+        return recoveryRecordService.getProcedures(start, end);
     }
 
     /**

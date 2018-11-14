@@ -38,7 +38,7 @@ public class RcmsController {
 
     public void execute(RecoveryJob recoveryJob) throws LV0AutomatorControlException, CommandServiceException {
 
-        logger.debug("Recovery job submitted to RCMS controller: " + recoveryJob);
+        logger.info("Recovery job submitted to RCMS controller: " + recoveryJob.toCompactString());
         // check if this is a ttchr request
         if (isTTCHardResetOnlyRequest(recoveryJob)) {
             logger.debug("Request generates TTC Hard Reset");
@@ -99,7 +99,7 @@ public class RcmsController {
 
         controller.interruptRecovery();
 
-        logger.debug("Setting the schedule for " + recoveryJob);
+        logger.debug("Setting the schedule for " + recoveryJob.toCompactString());
 
         Map<String, String> schedules = new HashMap<>();
 
@@ -121,6 +121,8 @@ public class RcmsController {
             logger.debug("Setting at-fault for: " + subsystem);
             controller.setFault(subsystem, true);
         }
+
+
         controller.setSchedules(schedules);
         controller.startRecovery();
 

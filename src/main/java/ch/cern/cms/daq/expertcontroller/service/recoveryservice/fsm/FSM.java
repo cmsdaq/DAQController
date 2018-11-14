@@ -1,6 +1,8 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm;
 
 import lombok.Builder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Builder
 public class FSM {
@@ -13,7 +15,11 @@ public class FSM {
         return this.state;
     }
 
+    private static final Logger logger = LoggerFactory.getLogger(FSM.class);
+
     public void transition(FSMEvent fsmEvent) {
+
+        logger.info("Transition " + state + " + " + fsmEvent);
 
         if (fsmEvent == null) {
             throw new IllegalArgumentException();
@@ -69,6 +75,7 @@ public class FSM {
         addToArray(State.Recovering, FSMEvent.JobCompleted, State.Observe);
         addToArray(State.Recovering, FSMEvent.Timeout, State.Failed);
         addToArray(State.Recovering, FSMEvent.Exception, State.Failed);
+        addToArray(State.Recovering, FSMEvent.JobException, State.SelectingJob);
 
         addToArray(State.Observe, FSMEvent.NoEffect, State.SelectingJob);
         addToArray(State.Observe, FSMEvent.Finished, State.Completed);
@@ -127,6 +134,9 @@ public class FSM {
                 break;
             case Exception:
                 result = listener.onException();
+                break;
+            case JobException:
+                result = listener.onJobException();
                 break;
             case Finished:
                 result = listener.onFinished();

@@ -57,4 +57,42 @@ public class RecoveryJob {
 
     Integer executionCount;
 
+    public String toCompactString(){
+        StringBuilder sb = new StringBuilder();
+        sb.append(this.getClass().getSimpleName());
+        sb.append("(");
+        sb.append("id=").append(id);
+        sb.append(", ").append("stepIndex=").append(stepIndex);
+        if(job != null){
+            sb.append(", ").append("job=").append(job);
+        }
+        if(issueTTCHardReset!= null && issueTTCHardReset){
+            sb.append(", ").append("issueTTCHardReset=").append(issueTTCHardReset);
+        }
+        if(redRecycle != null && redRecycle.size() > 0){
+            sb.append(", ").append("redRecycle=").append(redRecycle);
+        }
+        if(greenRecycle != null && greenRecycle.size() > 0){
+            sb.append(", ").append("greenRecycle=").append(greenRecycle);
+        }
+        if(fault != null && fault.size() > 0){
+            sb.append(", ").append("fault=").append(fault);
+        }
+        if(reset != null && reset.size() > 0){
+            sb.append(", ").append("reset=").append(reset);
+        }
+        if(start != null){
+            sb.append(", ").append("start=").append(start);
+        }
+        if(end != null){
+            sb.append(", ").append("end=").append(end);
+        }
+        if(executionCount != null){
+            sb.append(" ,").append("executionCount=").append(executionCount);
+        }
+
+        sb.append(")");
+        return sb.toString();
+    }
+
 }

@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm;
 
+import ch.cern.cms.daq.expertcontroller.entity.Event;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 
@@ -12,7 +13,7 @@ public interface IFSMListener {
     /**
      * Get summary of actions
      */
-    List<String> getSummary();
+    List<Event> getSummary();
 
     FSMEvent onStart();
 
@@ -33,6 +34,8 @@ public interface IFSMListener {
     FSMEvent onTimeout();
 
     FSMEvent onException();
+
+    FSMEvent onJobException();
 
     FSMEvent onFinished();
 

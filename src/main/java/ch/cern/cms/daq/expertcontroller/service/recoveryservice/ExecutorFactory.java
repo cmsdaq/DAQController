@@ -3,6 +3,7 @@ package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 import ch.cern.cms.daq.expertcontroller.entity.Event;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSM;
@@ -13,18 +14,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 import rcms.fm.fw.service.command.CommandServiceException;
 
 import javax.annotation.PostConstruct;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Component
 public class ExecutorFactory {
@@ -32,12 +31,17 @@ public class ExecutorFactory {
     @Autowired
     RcmsController rcmsController;
 
+    @Autowired
+    RecoveryProcedureRepository recoveryProcedureRepository;
+
     protected static RcmsController srcmsController;
+    protected static RecoveryProcedureRepository srecoveryProcedureRepository;
 
     @PostConstruct
-    public void init(){
+    public void init() {
         logger.info("Setting upd RCMS controller: " + rcmsController);
         ExecutorFactory.srcmsController = rcmsController;
+        ExecutorFactory.srecoveryProcedureRepository = recoveryProcedureRepository;
     }
 
     private static Logger logger = LoggerFactory.getLogger(ExecutorFactory.class);
@@ -45,14 +49,15 @@ public class ExecutorFactory {
     public static IExecutor build(
             Function<RecoveryJob, FSMEvent> approvalConsumer,
             Function<RecoveryJob, FSMEvent> recoveryJobConsumer,
-            BiConsumer<RecoveryProcedure, List<String>> report,
+            BiConsumer<RecoveryProcedure, List<Event>> report,
             Supplier<FSMEvent> observer,
             Integer approvalTimeout,
-            Integer executionTimeout) {
+            Integer executionTimeout,
+            Consumer<RecoveryProcedure> persistConsumer,
+            Runnable interruptConsumer) {
 
-        IFSMListener listener = FSMListener.builder().build();
+        IFSMListener listener = FSMListener.builder().persistResultsConsumer(persistConsumer).build();
 
-        ScheduledThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(1);
 
         FSM fsm = FSM.builder().listener(listener).build().initialize();
         IExecutor executor = Executor.builder()
@@ -65,7 +70,7 @@ public class ExecutorFactory {
                 .observationConsumer(observer)
                 .approvalTimeout(approvalTimeout)
                 .executionTimeout(executionTimeout)
-                .delayedFinishedSignals(pool)
+                .interruptConsumer(interruptConsumer)
                 .build();
         ((FSMListener) listener).setExecutor(executor);
 
@@ -87,41 +92,55 @@ public class ExecutorFactory {
 
     public static Function<RecoveryJob, FSMEvent> recoveryJobConsumer = recoveryJob -> {
         try {
-            logger.debug("Rcms controller: " + srcmsController);
-            logger.info("Passing the recovery job: " + recoveryJob + " to RCMS controller");
-
-            recoveryJob.setStart(OffsetDateTime.now());
+            logger.debug("Passing the recovery job: " + recoveryJob.toCompactString() + " to RCMS controller");
             srcmsController.execute(recoveryJob);
-            recoveryJob.setEnd(OffsetDateTime.now());
             return FSMEvent.JobCompleted;
         } catch (CommandServiceException | LV0AutomatorControlException e) {
-            logger.warn("Job failed due to RCMS exception: "+ e.getMessage());
-            logger.info("Recovery job considered to be failed");
-            return FSMEvent.Exception;
+            logger.warn("Job failed due to RCMS exception: " + e.getMessage());
+            return FSMEvent.JobException;
         }
     };
 
 
-    public static Supplier<FSMEvent> fixedDelayObserver = new Supplier<FSMEvent>() {
+    public static Supplier<FSMEvent> fixedDelayObserver = () -> {
 
+        logger.info("Observing the system");
+//        try {
+//            Thread.sleep(1000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//        if (Math.random() < 0.3) {
+//            logger.info("Received finished signal");
+//            return FSMEvent.Finished;
+//        }
 
-        @Override
-        public FSMEvent get() {
-            logger.info("Observing the system");
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            logger.info("Timeout");
-            return FSMEvent.NoEffect;
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
+        logger.info("Timeout of observation");
+        return FSMEvent.NoEffect;
+
+    };
+
+    public static Consumer<RecoveryProcedure> persistResultsConsumer = recoveryProcedure -> {
+
+        logger.info("Updating recovery procedure " + recoveryProcedure.getId());
+        srecoveryProcedureRepository.save(recoveryProcedure);
+    };
+
+    public static Runnable interruptConsumer = () -> {
+        logger.info("Interrupting rcms job");
+        srcmsController.interrupt();
+
     };
 
 
-    public static BiConsumer<RecoveryProcedure, List<String>> report = (rp, s) -> {
+    public static BiConsumer<RecoveryProcedure, List<Event>> report = (rp, s) -> {
         logger.info("Reporting the acceptanceDecision: " + s);
-        rp.setEventSummary(s.stream().map(c -> Event.builder().content(c).build()).collect(Collectors.toList()));
+        rp.setEventSummary(s);
     };
 
     public static IExecutor DEFAULT_EXECUTOR = build(
@@ -130,7 +149,10 @@ public class ExecutorFactory {
             report,
             fixedDelayObserver,
             2,
-            600
+            600,
+            persistResultsConsumer,
+            interruptConsumer
+
     );
 
 

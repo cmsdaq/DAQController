@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -126,19 +127,29 @@ public class TestExecutorFactory extends ExecutorFactory {
         }
     };
 
-    public static BiConsumer<RecoveryProcedure, List<String>> report = (rp, s) -> {
-            logger.info("Reporting the acceptanceDecision: "+s);
-            rp.setEventSummary(s.stream().map(c-> Event.builder().content(c).build()).collect(Collectors.toList()));
+    public static BiConsumer<RecoveryProcedure, List<Event>> report = (rp, s) -> {
+        logger.info("Reporting the acceptanceDecision: " + s);
+        rp.setEventSummary(s);
     };
 
+    public static Consumer<RecoveryProcedure> printRecoveryProcedurePersistor = recoveryProcedure ->
+            logger.info("Persist " + recoveryProcedure.getProblemTitle());
 
+
+
+    public static Runnable interruptConsumer = () -> {
+        logger.info("Interrupting rcms job");
+
+    };
 
     public static IExecutor TEST_EXECUTOR = build(
             approvalConsumerThatNeverAccepts,
             recoveryJobConsumerThatCompletesImmediately,
             report, observerThatTimeoutsImmediately,
             1,
-            1
+            1,
+            printRecoveryProcedurePersistor,
+            interruptConsumer
     );
 
     public static IExecutor INTEGRATION_TEST_EXECUTOR = build(
@@ -147,7 +158,9 @@ public class TestExecutorFactory extends ExecutorFactory {
             report,
             fixedDelayObserver,
             1,
-            recoveringTime*2
+            recoveringTime * 2,
+            printRecoveryProcedurePersistor,
+            interruptConsumer
     );
 
 }

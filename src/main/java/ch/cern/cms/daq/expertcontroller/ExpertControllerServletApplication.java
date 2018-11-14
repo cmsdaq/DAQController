@@ -5,8 +5,6 @@ import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutorFactory;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -22,10 +20,6 @@ public class ExpertControllerServletApplication extends SpringBootServletInitial
 
     @Autowired
     ProbeRecoverySender probeRecoverySender;
-
-
-    @Value("${test.commands.enabled}")
-    Boolean runTestCommands;
 
     private static Logger logger = Logger.getLogger(ExpertControllerServletApplication.class);
 
@@ -47,24 +41,5 @@ public class ExpertControllerServletApplication extends SpringBootServletInitial
             return ExecutorFactory.DEFAULT_EXECUTOR;
         }
     }
-
-
-    @Bean
-    CommandLineRunner init() {
-        return (evt) -> {
-
-            if(runTestCommands!= null && runTestCommands) {
-                logger.info("Test commands enabled");
-                probeRecoverySender.issueTTCHardReset();
-
-            } else{
-                logger.info("Test commands disabled");
-            }
-        };
-    }
-
-
-
-
 
 }

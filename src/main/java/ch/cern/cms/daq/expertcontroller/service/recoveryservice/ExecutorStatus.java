@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
+import ch.cern.cms.daq.expertcontroller.entity.Event;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
 import lombok.Builder;
 import lombok.Data;
@@ -15,5 +16,5 @@ public class ExecutorStatus {
 
     private State state;
 
-    private List<String> actionSummary;
+    private List<Event> actionSummary;
 }

@@ -1,23 +1,24 @@
 package ch.cern.cms.daq.expertcontroller.datatransfer;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
+import java.time.OffsetDateTime;
 import java.util.Set;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class RecoveryRequestStep {
+public class RecoveryJob {
 
-    Integer stepIndex;
+    private Long id;
 
-    String humanReadable;
+    String job;
+
+    OffsetDateTime start;
+
+    OffsetDateTime end;
 
     Boolean issueTTCHardReset;
+
+    Integer stepIndex;
 
     Set<String> redRecycle;
 
@@ -27,4 +28,5 @@ public class RecoveryRequestStep {
 
     Set<String> reset;
 
+    Integer executionCount;
 }

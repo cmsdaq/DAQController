@@ -134,7 +134,7 @@ public class ExpertControllerApplicationTests {
 
         RecoveryRequest r = new RecoveryRequest();
         r.setProblemId(10L);
-        r.setRecoverySteps(new ArrayList<>());
+        r.setRecoveryRequestSteps(new ArrayList<>());
         given().header(jsonHeader).body(r).post("/recover").then().assertThat().statusCode(equalTo(HttpStatus.BAD_REQUEST.value()));
     }
 
@@ -145,9 +145,10 @@ public class ExpertControllerApplicationTests {
         // 1. create recovery request with one step
         RecoveryRequest r = RecoveryRequest.builder()
                 .problemId(101L)
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
+                                .stepIndex(0)
                                 .build()))
                 .build();
 
@@ -198,9 +199,10 @@ public class ExpertControllerApplicationTests {
         // 1. build request
         RecoveryRequest r = RecoveryRequest.builder()
                 .problemId(101L)
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
+                                .stepIndex(0)
                                 .build()))
                 .build();
 
@@ -233,7 +235,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "executorState", equalTo("Idle"),
-                        "lastProcedureStatus.actionSummary", equalTo(Arrays.asList("Recovery procedure has been cancelled")),
+                        "lastProcedureStatus.actionSummary.content", equalTo(Arrays.asList("Procedure starts", "Recovery procedure has been cancelled")),
                         "lastProcedureStatus.finalStatus", equalTo("Cancelled")
                 );
 
@@ -250,9 +252,10 @@ public class ExpertControllerApplicationTests {
         // 1. build request
         RecoveryRequest r = RecoveryRequest.builder()
                 .problemId(101L)
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
+                                .stepIndex(0)
                                 .build()))
                 .build();
 
@@ -291,7 +294,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "executorState", equalTo("Idle"),
-                        "lastProcedureStatus.actionSummary", equalTo(Arrays.asList("Job J1 accepted", "Job J1 completed", "Recovery procedure completed successfully")),
+                        "lastProcedureStatus.actionSummary.content", equalTo(Arrays.asList("Procedure starts", "Job J1 accepted", "Job J1 completed", "Recovery procedure completed successfully")),
                         "lastProcedureStatus.finalStatus", equalTo("Completed")
                 );
 
@@ -310,7 +313,7 @@ public class ExpertControllerApplicationTests {
         RecoveryRequest r = RecoveryRequest.builder()
                 .problemId(101L)
                 .problemTitle("Problem T1")
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
                                 .stepIndex(0)
@@ -354,9 +357,10 @@ public class ExpertControllerApplicationTests {
         RecoveryRequest r2 = RecoveryRequest.builder()
                 .problemId(101L)
                 .isSameProblem(true)
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
+                                .stepIndex(0)
                                 .build()))
                 .build();
 
@@ -415,8 +419,8 @@ public class ExpertControllerApplicationTests {
 
     private RecoveryRequest generateRecoveryRequest(Long problemId) {
         RecoveryRequest r = RecoveryRequest.builder().
-                problemId(problemId).recoverySteps(new ArrayList<>()).build();
-        r.getRecoverySteps().add(RecoveryRequestStep.builder().build());
+                problemId(problemId).recoveryRequestSteps(new ArrayList<>()).build();
+        r.getRecoveryRequestSteps().add(RecoveryRequestStep.builder().build());
         return r;
     }
 
@@ -447,7 +451,7 @@ public class ExpertControllerApplicationTests {
         RecoveryRequest r = RecoveryRequest.builder()
                 .problemId(101L)
                 .problemTitle("Problem T1")
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
                                 .stepIndex(0)
@@ -476,7 +480,7 @@ public class ExpertControllerApplicationTests {
         RecoveryRequest r2 = RecoveryRequest.builder()
                 .problemId(101L)
                 .problemTitle("Problem T1")
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
                                 .stepIndex(0)
@@ -503,7 +507,7 @@ public class ExpertControllerApplicationTests {
         RecoveryRequest r = RecoveryRequest.builder()
                 .problemId(101L)
                 .problemTitle("Problem T1")
-                .recoverySteps(Arrays.asList(
+                .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
                                 .humanReadable("J1")
                                 .stepIndex(0)

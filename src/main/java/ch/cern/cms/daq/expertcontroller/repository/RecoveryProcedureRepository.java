@@ -1,6 +1,7 @@
 package ch.cern.cms.daq.expertcontroller.repository;
 
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,5 +21,11 @@ public interface RecoveryProcedureRepository extends JpaRepository<RecoveryProce
      * Will return the Recovery procedures in given time window
      */
     @Query("select r from RecoveryProcedure r where r.start <= :endDate and (r.end >= :startDate or r.end is null)")
-    List<RecoveryProcedure> findBetween(@Param("startDate") OffsetDateTime startDate, @Param("endDate") OffsetDateTime endDate);
+    List<RecoveryProcedure> findBetween(
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate,
+            Sort sort);
+
+
+    List<RecoveryProcedure> findTop20ByOrderByStartDesc();
 }

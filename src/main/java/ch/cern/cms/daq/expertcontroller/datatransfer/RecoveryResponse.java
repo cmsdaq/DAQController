@@ -1,11 +1,17 @@
 package ch.cern.cms.daq.expertcontroller.datatransfer;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Response to expert. Data transfer object
  */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class RecoveryResponse {
 
     /**

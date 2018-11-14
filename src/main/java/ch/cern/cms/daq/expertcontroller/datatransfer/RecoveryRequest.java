@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Recovery request DTO. Defines what is
+ * Recovery request DTO. Defines what is the problem and what are the steps to recover.
  */
 @Data
 @Builder
@@ -31,7 +31,7 @@ public class RecoveryRequest {
 
     private boolean withPostponement;
 
-    private List<RecoveryRequestStep> recoverySteps;
+    private List<RecoveryRequestStep> recoveryRequestSteps;
 
     public String toString() {
         return new StringBuilder()
