@@ -3,6 +3,7 @@ package ch.cern.cms.daq.expertcontroller.controller;
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
 import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryProcedureStatus;
+import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryServiceStatus;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,14 +37,22 @@ public class DashboardController {
      * @return acceptanceDecision of the recovery that has been approved
      */
     @MessageMapping("/approve")
-    @SendTo("/topic/recovery-acceptanceDecision")
-    public RecoveryProcedureStatus approve(@RequestBody ApprovalResponse approvalResponse) {
+    @SendTo("/topic/recovery-status")
+    public RecoveryServiceStatus approve(@RequestBody ApprovalResponse approvalResponse) {
 
         logger.info("Approval request: " + approvalResponse);
         recoveryService.submitApprovalDecision(approvalResponse);
-        return recoveryService.getRecoveryProcedureStatus(approvalResponse.getRecoveryProcedureId());
+        return recoveryService.getRecoveryServiceStatus();
     }
 
+    /**
+     * Called by the dashboard client when requests status
+     */
+    @MessageMapping("/status")
+    @SendTo("/topic/recovery-status")
+    public RecoveryServiceStatus getStatus() {
+        return recoveryService.getRecoveryServiceStatus();
+    }
     /**
      * Sends approval request to the dashboard client
      *
@@ -61,13 +70,13 @@ public class DashboardController {
 
 
     /**
-     * Sends current recovery acceptanceDecision to the dashboard client
+     * Sends current recovery status to the dashboard client
      *
-     * @param recoveryProcedureStatus data transfer object describing acceptanceDecision of current recovery
+     * @param recoveryServiceStatus data transfer object describing status of current recovery
      */
-    public void notifyRecoveryStatus(RecoveryProcedureStatus recoveryProcedureStatus) {
-        logger.info("Notifying dashboard acceptanceDecision changed: " + recoveryProcedureStatus);
-        this.template.convertAndSend("/topic/recovery-acceptanceDecision", recoveryProcedureStatus);
+    public void notifyRecoveryStatus(RecoveryServiceStatus recoveryServiceStatus) {
+        logger.info("Notifying dashboard status changed: " + recoveryServiceStatus);
+        this.template.convertAndSend("/topic/recovery-status", recoveryServiceStatus);
     }
 
 }

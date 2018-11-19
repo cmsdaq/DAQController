@@ -19,9 +19,9 @@ public class TestExecutorFactory extends ExecutorFactory {
 
     static Logger logger = LoggerFactory.getLogger(TestExecutorFactory.class);
 
-    public static Integer observingTime = 2000;
+    public static Integer observingTime = 1000;
 
-    public static Integer recoveringTime = 2000;
+    public static Integer recoveringTime = 1000;
 
 
     public static Function<RecoveryJob, FSMEvent> approvalConsumerThatAccepts = recoveryJob -> {
@@ -136,6 +136,9 @@ public class TestExecutorFactory extends ExecutorFactory {
             logger.info("Persist " + recoveryProcedure.getProblemTitle());
 
 
+    public static Consumer<RecoveryProcedure> printOnUpdateConsumer = recoveryProcedure ->
+            logger.info("On update:  " + recoveryProcedure.getProblemTitle());
+
 
     public static Runnable interruptConsumer = () -> {
         logger.info("Interrupting rcms job");
@@ -149,6 +152,7 @@ public class TestExecutorFactory extends ExecutorFactory {
             1,
             1,
             printRecoveryProcedurePersistor,
+            printOnUpdateConsumer,
             interruptConsumer
     );
 
@@ -159,7 +163,8 @@ public class TestExecutorFactory extends ExecutorFactory {
             fixedDelayObserver,
             1,
             recoveringTime * 2,
-            printRecoveryProcedurePersistor,
+            persistResultsConsumer,
+            printOnUpdateConsumer,
             interruptConsumer
     );
 

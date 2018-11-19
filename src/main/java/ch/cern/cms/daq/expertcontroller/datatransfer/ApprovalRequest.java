@@ -1,7 +1,9 @@
 package ch.cern.cms.daq.expertcontroller.datatransfer;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +13,9 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
+@Builder
+@NoArgsConstructor
 public class ApprovalRequest {
     private long recoveryProcedureId;
+    private Integer defaultStepIndex;
 }

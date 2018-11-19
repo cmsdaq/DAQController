@@ -94,6 +94,8 @@ public class Executor implements IExecutor {
     @Override
     public List<Event> start(RecoveryProcedure recoveryProcedure, boolean wait) {
         executedProcedure = recoveryProcedure;
+        executedProcedure.getProcedure().stream().forEach(j->j.setProcedureId(executedProcedure.getId()));
+
         listener.setCurrentProcedure(recoveryProcedure);
         Thread thread = new Thread(() -> fsm.transition(FSMEvent.RecoveryStarts));
         thread.start();

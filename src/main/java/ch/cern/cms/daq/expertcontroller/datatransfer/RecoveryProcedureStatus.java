@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.datatransfer;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -31,11 +32,13 @@ RecoveryProcedureStatus {
      *
      * @see ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State
      */
+    @JsonProperty("status")
     String finalStatus;
 
     /**
      * Statuses of individual jobs.
      */
+    @JsonProperty("automatedSteps")
     List<RecoveryJobStatus> jobStatuses;
 
     /**

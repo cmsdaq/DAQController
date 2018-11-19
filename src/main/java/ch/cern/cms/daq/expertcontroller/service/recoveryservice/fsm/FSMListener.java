@@ -34,6 +34,8 @@ public class FSMListener implements IFSMListener {
 
     private Consumer<RecoveryProcedure> persistResultsConsumer;
 
+    private Consumer<RecoveryProcedure> onUpdateConsumer;
+
     private static Logger logger = LoggerFactory.getLogger(FSMListener.class);
 
     public void setExecutor(IExecutor executor) {
@@ -59,11 +61,11 @@ public class FSMListener implements IFSMListener {
         if (currentProcedure.getExecutedJobs() == null) {
             currentProcedure.setExecutedJobs(new ArrayList<>());
         }
-        currentProcedure.getExecutedJobs().add(nextJob);
 
         if (nextJob != null) {
-
             logger.info("Next job found: " + nextJob.getStepIndex() + ", " + nextJob.getJob());
+
+            currentProcedure.getExecutedJobs().add(nextJob);
             currentJob = nextJob;
             return FSMEvent.NextJobFound;
         } else {
@@ -108,8 +110,7 @@ public class FSMListener implements IFSMListener {
                                 .build());
         currentJob.setStart(OffsetDateTime.now());
 
-        if (currentJob.getExecutionCount() == null)
-            currentJob.setExecutionCount(0);
+        currentJob.setStatus(State.Recovering.toString());
 
         currentJob.setEnd(null);
         onUpdateProcedure();
@@ -127,8 +128,8 @@ public class FSMListener implements IFSMListener {
 
         currentJob.setEnd(OffsetDateTime.now());
 
-        Integer executionCount = currentJob.getExecutionCount();
-        currentJob.setExecutionCount(executionCount + 1);
+
+        currentJob.setStatus(State.Completed.toString());
 
         onUpdateProcedure();
         return executor.callObservationConsumer();
@@ -142,6 +143,8 @@ public class FSMListener implements IFSMListener {
                                 .date(OffsetDateTime.now())
                                 .type("processing")
                                 .build());
+
+        currentJob.setStatus(State.Completed.toString());
         onUpdateProcedure();
         return selectNextJob();
     }
@@ -162,6 +165,10 @@ public class FSMListener implements IFSMListener {
     public FSMEvent onReportStatus() {
 
         executor.callStatusReportConsumer(currentProcedure, reportSteps);
+
+        if(onUpdateConsumer != null)
+            onUpdateConsumer.accept(currentProcedure);
+
         return null;
     }
 
@@ -181,6 +188,10 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onNextJobFound() {
         logger.info("Next job found: " + currentJob.getJob() + " Passing to approval request consumer");
+
+        if(onUpdateConsumer != null)
+            onUpdateConsumer.accept(currentProcedure);
+
         return executor.callApprovalRequestConsumer(currentJob);
     }
 
@@ -206,6 +217,7 @@ public class FSMListener implements IFSMListener {
 
         if(currentJob != null && currentJob.getEnd() == null){
             currentJob.setEnd(OffsetDateTime.now());
+            currentJob.setStatus(State.Failed.toString());
         }
         onUpdateProcedure();
         onFinishProcedure();
@@ -215,9 +227,7 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onJobException() {
         currentJob.setEnd(OffsetDateTime.now());
-
-        Integer executionCount = currentJob.getExecutionCount();
-        currentJob.setExecutionCount(executionCount + 1);
+        currentJob.setStatus(State.Failed.toString());
 
         reportSteps.add(Event.builder()
                                 .content("Job "+ currentJob.getJob()+" finished with exception")
@@ -225,6 +235,8 @@ public class FSMListener implements IFSMListener {
                                 .type("exception")
                                 .build());
 
+
+        onUpdateProcedure();
         return selectNextJob();
 
     }
@@ -251,6 +263,7 @@ public class FSMListener implements IFSMListener {
 
         if (currentJob != null && currentJob.getEnd() == null) {
             currentJob.setEnd(OffsetDateTime.now());
+            currentJob.setStatus(State.Cancelled.toString());
         }
         onUpdateProcedure();
         onFinishProcedure();
@@ -276,6 +289,9 @@ public class FSMListener implements IFSMListener {
         if (persistResultsConsumer != null)
             persistResultsConsumer.accept(currentProcedure);
 
+        if(onUpdateConsumer != null)
+            onUpdateConsumer.accept(currentProcedure);
+
     }
 
     private void onUpdateProcedure() {
@@ -284,6 +300,10 @@ public class FSMListener implements IFSMListener {
 
         if (persistResultsConsumer != null)
             persistResultsConsumer.accept(currentProcedure);
+
+        if(onUpdateConsumer != null)
+            onUpdateConsumer.accept(currentProcedure);
+
 
     }
 

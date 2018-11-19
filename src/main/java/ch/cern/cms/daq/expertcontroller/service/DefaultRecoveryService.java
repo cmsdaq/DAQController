@@ -15,9 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.sql.Date;
-import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +49,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     private final static Logger logger = Logger.getLogger(DefaultRecoveryService.class);
 
     @PostConstruct
-    private void init(){
+    private void init() {
         delayedFinishedSignals = new ScheduledThreadPoolExecutor(1);
     }
 
@@ -104,7 +104,6 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 recoveryProcedureRepository.save(preemptingProcedure);
                 logger.info("Preempting procedure has been persisted with id " + preemptedProcedure.getId());
                 recoveryProcedureExecutor.start(preemptingProcedure);
-
                 response.setRecoveryProcedureId(preemptingProcedure.getId());
                 break;
 
@@ -172,20 +171,12 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         return builder.build();
     }
 
-    private RecoveryProcedureStatus buildProcedureStatus(RecoveryProcedure recoveryProcedure) {
 
-        RecoveryProcedureStatus.RecoveryProcedureStatusBuilder builder = RecoveryProcedureStatus.builder();
-        if (recoveryProcedure != null) {
-            if (recoveryProcedure.getStart() != null)
-                builder.startDate(Date.from(recoveryProcedure.getStart().toInstant()));
-            if (recoveryProcedure.getEnd() != null)
-                builder.endDate(Date.from(recoveryProcedure.getEnd().toInstant()));
-            builder.jobStatuses(null);
-
-        }
-        return builder.build();
-    }
-
+    /**
+     * This service status describes current executor status and last procedure.
+     * Last procedure can be finished or ongoing. It's based on current state, database is not accessed.
+     * @return
+     */
     @Override
     public RecoveryServiceStatus getRecoveryServiceStatus() {
 
@@ -205,7 +196,17 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         builder.executorState(status.getState().toString());
 
         // 4. Prepare last Procedure Status DTO
-        RecoveryProcedureStatus recoveryProcedureStatus = buildProcedureStatus(lastExecutedProcedure);
+        RecoveryProcedureStatus.RecoveryProcedureStatusBuilder procedureStatusBuilder
+                = RecoveryProcedureStatus.builder();
+        if (lastExecutedProcedure != null) {
+            if (lastExecutedProcedure.getStart() != null)
+                procedureStatusBuilder.startDate(Date.from(lastExecutedProcedure.getStart().toInstant()));
+            if (lastExecutedProcedure.getEnd() != null)
+                procedureStatusBuilder.endDate(Date.from(lastExecutedProcedure.getEnd().toInstant()));
+            procedureStatusBuilder.jobStatuses(null);
+
+        }
+        RecoveryProcedureStatus recoveryProcedureStatus= procedureStatusBuilder.build();
 
         // TODO: include how many times the steps were executed etc.
         // TODO: set up procedure id
@@ -238,15 +239,51 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             modelMapper.getConfiguration()
                     .setMatchingStrategy(MatchingStrategies.STRICT);
 
-            List<Event> actionSummaryDTO =
-                    actionSummary.stream()
-                            .map(e -> modelMapper.map(e, ch.cern.cms.daq.expertcontroller.datatransfer.Event.class))
-                            .collect(Collectors.toList());
+            if(actionSummary != null) {
+                List<Event> actionSummaryDTO =
+                        actionSummary.stream()
+                                .map(e -> modelMapper.map(e, ch.cern.cms.daq.expertcontroller.datatransfer.Event.class))
+                                .collect(Collectors.toList());
 
-            recoveryProcedureStatus.setActionSummary(actionSummaryDTO);
+                recoveryProcedureStatus.setActionSummary(actionSummaryDTO);
+            }
             recoveryProcedureStatus.setFinalStatus(finalStatus);
             recoveryProcedureStatus.setId(lastExecutedProcedure.getId());
             recoveryProcedureStatus.setConditionIds(lastExecutedProcedure.getProblemIds());
+
+            ArrayList<RecoveryJobStatus> jobStatuses = new ArrayList<>();
+            lastExecutedProcedure.getProcedure().stream().forEach(j->{
+                Date started = null, finished = null;
+                if(j.getStart() != null)
+                    started = Date.from(j.getStart().toInstant());
+
+                if(j.getEnd() != null)
+                    finished = Date.from(j.getEnd().toInstant());
+
+                // count jobs with given step index
+
+                logger.info("Counting executed times for step " + j.getStepIndex());
+                logger.info("... from executed jobs: " + lastExecutedProcedure.getExecutedJobs() );
+                Long executed = 0L;
+                if(lastExecutedProcedure.getExecutedJobs() != null)
+                    executed = lastExecutedProcedure.getExecutedJobs().stream()
+                            .filter(c->c.getStepIndex() == j.getStepIndex())
+                            .filter(c->c.getEnd() != null).count();
+
+                RecoveryJobStatus recoveryJobStatus = RecoveryJobStatus.builder()
+                        .started(started)
+                        .finished(finished)
+                        .stepIndex(j.getStepIndex())
+                        .status(j.getStatus())
+                        .rcmsStatus("rcmsTest")
+                        .timesExecuted(executed.intValue())
+                        .build();
+
+                jobStatuses.add(recoveryJobStatus);
+            });
+
+            recoveryProcedureStatus.setJobStatuses(jobStatuses);
+
             builder.lastProcedureStatus(recoveryProcedureStatus);
         }
         return builder.build();
@@ -292,9 +329,17 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     public void onRecoveryProcedureStateUpdate() {
 
         // TODO: fill with recovery procedure finalStatus
-        dashboardController.notifyRecoveryStatus(null);
+
+        RecoveryServiceStatus recoveryServiceStatus = getRecoveryServiceStatus();
+
+        dashboardController.notifyRecoveryStatus(recoveryServiceStatus);
     }
 
+
+    public void onApprovalRequest(ApprovalRequest approvalRequest){
+        logger.info("Asking clients for appproval " + approvalRequest);
+        dashboardController.requestApprove(approvalRequest);
+    }
 
     /**
      * Called when Recovery procedure finishes
@@ -308,7 +353,11 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         }
     }
 
-    //TODO: convert Recovery Request to Recovery Procedure
+    /**
+     * Generate Recovery Procedure from given Recovery Request
+     *
+     * @param recoveryRequest recovery request that will bee a base for cration of Recovery procedure
+     */
     private RecoveryProcedure createRecoveryProcedure(RecoveryRequest recoveryRequest) {
         RecoveryProcedure recoveryProcedure =
                 RecoveryProcedure.builder().
@@ -391,6 +440,11 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     }
 
 
+    /**
+     * Handle reception of finished signal
+     *
+     * @param id id of problem that finished
+     */
     @Override
     public void finished(Long id) {
 
@@ -415,7 +469,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
                     boolean accepted = recoveryProcedureExecutor.finished();
 
-                    if (!accepted){
+                    if (!accepted) {
                         delayedFinishedSignals.schedule(() -> this.finished(id), 1, TimeUnit.SECONDS);
                     }
                 } else {

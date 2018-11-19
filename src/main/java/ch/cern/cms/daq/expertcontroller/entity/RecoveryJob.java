@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
 import javax.persistence.*;
@@ -55,7 +56,14 @@ public class RecoveryJob {
     @CollectionTable(name ="recoveryJobReset")
     Set<String> reset;
 
+    /*TODO: remove this: job can be executed only once (step will count jobs with given stepIndex)*/
     Integer executionCount;
+
+    String status;
+
+    @JsonIgnore
+    @Transient
+    Long procedureId;
 
     public String toCompactString(){
         StringBuilder sb = new StringBuilder();

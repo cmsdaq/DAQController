@@ -139,7 +139,7 @@ public class ExpertControllerApplicationTests {
     }
 
     @Test
-    public void checkRecoveryRecordsAfterOneRequestTest() {
+    public void checkRecoveryRecordsAfterOneRequestTest() throws InterruptedException {
 
 
         // 1. create recovery request with one step
@@ -175,10 +175,11 @@ public class ExpertControllerApplicationTests {
         //4. Assert status of the procedure
         // TODO: if have procedure id
 
-
         OffsetDateTime start = OffsetDateTime.now().minusYears(1);
         OffsetDateTime end = OffsetDateTime.now().plusYears(1);
         System.out.println("All: " + recoveryProcedureRepository.findAll());
+
+        //
 
         // 5. Assert correct recovery records
         given().queryParam("start", start.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
@@ -236,7 +237,7 @@ public class ExpertControllerApplicationTests {
                 .body(
                         "executorState", equalTo("Idle"),
                         "lastProcedureStatus.actionSummary.content", equalTo(Arrays.asList("Procedure starts", "Recovery procedure has been cancelled")),
-                        "lastProcedureStatus.finalStatus", equalTo("Cancelled")
+                        "lastProcedureStatus.status", equalTo("Cancelled")
                 );
 
         // TODO: assert remaining status fields: id=null, jobStatuses=null, conditionIds=null,
@@ -295,7 +296,7 @@ public class ExpertControllerApplicationTests {
                 .body(
                         "executorState", equalTo("Idle"),
                         "lastProcedureStatus.actionSummary.content", equalTo(Arrays.asList("Procedure starts", "Job J1 accepted", "Job J1 completed", "Recovery procedure completed successfully")),
-                        "lastProcedureStatus.finalStatus", equalTo("Completed")
+                        "lastProcedureStatus.status", equalTo("Completed")
                 );
 
         // TODO: assert remaining status fields: id=null, jobStatuses=null, conditionIds=null,
@@ -404,6 +405,9 @@ public class ExpertControllerApplicationTests {
         // Finished signal was sent during recovering state - it will be delayed until observe period
         Thread.sleep(TestExecutorFactory.recoveringTime);
 
+        // Delay of the finish signal is 1s, wait 2x worst case (so that transition goes completed->Idle
+        Thread.sleep(2* 1000);
+
 
         // 8. Assert status of the service after 2nd job
         given().header(jsonHeader)
@@ -472,7 +476,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "executorState", equalTo("AwaitingApproval"),
-                        "lastProcedureStatus.id", equalTo(10)
+                        "lastProcedureStatus.id", notNullValue()
                 );
 
 

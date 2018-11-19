@@ -1,9 +1,11 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
+import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.entity.Event;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
+import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSM;
@@ -19,7 +21,6 @@ import rcms.fm.fw.service.command.CommandServiceException;
 import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -34,14 +35,19 @@ public class ExecutorFactory {
     @Autowired
     RecoveryProcedureRepository recoveryProcedureRepository;
 
+    @Autowired
+    IRecoveryService recoveryService;
+
     protected static RcmsController srcmsController;
     protected static RecoveryProcedureRepository srecoveryProcedureRepository;
+    protected static IRecoveryService srecoveryService;
+
 
     @PostConstruct
     public void init() {
-        logger.info("Setting upd RCMS controller: " + rcmsController);
         ExecutorFactory.srcmsController = rcmsController;
         ExecutorFactory.srecoveryProcedureRepository = recoveryProcedureRepository;
+        ExecutorFactory.srecoveryService = recoveryService;
     }
 
     private static Logger logger = LoggerFactory.getLogger(ExecutorFactory.class);
@@ -54,9 +60,13 @@ public class ExecutorFactory {
             Integer approvalTimeout,
             Integer executionTimeout,
             Consumer<RecoveryProcedure> persistConsumer,
+            Consumer<RecoveryProcedure> onUpdateConsumer,
             Runnable interruptConsumer) {
 
-        IFSMListener listener = FSMListener.builder().persistResultsConsumer(persistConsumer).build();
+        IFSMListener listener = FSMListener.builder()
+                .persistResultsConsumer(persistConsumer)
+                .onUpdateConsumer(onUpdateConsumer)
+                .build();
 
 
         FSM fsm = FSM.builder().listener(listener).build().initialize();
@@ -78,7 +88,7 @@ public class ExecutorFactory {
         return executor;
     }
 
-    public static Function<RecoveryJob, FSMEvent> approvalConsumerThatAccepts = recoveryJob -> {
+    public static Function<RecoveryJob, FSMEvent> automaticApprovalConsumer = recoveryJob -> {
 
         try {
             Thread.sleep(1000);
@@ -87,6 +97,20 @@ public class ExecutorFactory {
         }
         logger.info("Approval required, accepting");
         return FSMEvent.JobAccepted;
+
+    };
+
+    public static Function<RecoveryJob, FSMEvent> manualApprovalConsumer = recoveryJob -> {
+
+        ApprovalRequest approvalRequest = ApprovalRequest.builder()
+                .recoveryProcedureId(recoveryJob.getProcedureId())
+                .defaultStepIndex(recoveryJob.getStepIndex())
+                .build();
+
+
+        srecoveryService.onApprovalRequest(approvalRequest);
+
+        return null;
 
     };
 
@@ -131,6 +155,11 @@ public class ExecutorFactory {
         srecoveryProcedureRepository.save(recoveryProcedure);
     };
 
+    public static Consumer<RecoveryProcedure> onProcedureUpdateConsumer = recoveryProcedure -> {
+        logger.info("On recovery procedure update " + recoveryProcedure.getId());
+        srecoveryService.onRecoveryProcedureStateUpdate();
+    };
+
     public static Runnable interruptConsumer = () -> {
         logger.info("Interrupting rcms job");
         srcmsController.interrupt();
@@ -144,13 +173,14 @@ public class ExecutorFactory {
     };
 
     public static IExecutor DEFAULT_EXECUTOR = build(
-            approvalConsumerThatAccepts,
+            manualApprovalConsumer,
             recoveryJobConsumer,
             report,
             fixedDelayObserver,
             2,
             600,
             persistResultsConsumer,
+            onProcedureUpdateConsumer,
             interruptConsumer
 
     );

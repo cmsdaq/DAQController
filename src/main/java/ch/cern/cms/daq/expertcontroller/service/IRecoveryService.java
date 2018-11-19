@@ -1,6 +1,7 @@
 package ch.cern.cms.daq.expertcontroller.service;
 
 import ch.cern.cms.daq.expertcontroller.datatransfer.*;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
@@ -52,6 +53,11 @@ public interface IRecoveryService {
     void finished(Long id);
 
     InterruptResponse interrupt();
+
+
+    void onRecoveryProcedureStateUpdate();
+
+    void onApprovalRequest(ApprovalRequest approvalRequest);
 
     /**
      * Closes the service gracefully before shutdown
