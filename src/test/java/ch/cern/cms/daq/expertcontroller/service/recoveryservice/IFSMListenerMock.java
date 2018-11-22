@@ -120,6 +120,12 @@ class IFSMListenerMock implements IFSMListener {
     }
 
     @Override
+    public FSMEvent onProcedureContinues() {
+        System.out.println("on procedure continues");
+        return null;
+    }
+
+    @Override
     public RecoveryJob getCurrentJob() {
         return null;
     }

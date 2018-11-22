@@ -175,9 +175,10 @@ public class ExecutorFactory {
     public static Consumer<RecoveryProcedure> persistResultsConsumer = recoveryProcedure -> {
 
         logger.info("Updating recovery procedure " + recoveryProcedure.getId());
-        for(RecoveryJob job: recoveryProcedure.getExecutedJobs()){
-            srecoveryJobRepository.save(job);
-        }
+        recoveryProcedure.getExecutedJobs().stream().forEach(job->{
+
+                srecoveryJobRepository.save(job);
+        });
         srecoveryProcedureRepository.save(recoveryProcedure);
 
 

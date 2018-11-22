@@ -304,7 +304,6 @@ public class ExpertControllerApplicationTests {
 
     }
 
-
     /**
      * Tests the behaviour for 2-job recovery procedure where 1st job doesn't fix the problem and 2nd does
      */
@@ -332,10 +331,10 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryProcedureId", notNullValue());
+                        "recoveryProcedureId", equalTo(1));
 
 
-        ApprovalResponse approvalResponse = generateApprovalResponse(10L, 0);
+        ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
 
@@ -355,9 +354,10 @@ public class ExpertControllerApplicationTests {
         // 5. wait until recovering finishes and observe period starts
         Thread.sleep(TestExecutorFactory.recoveringTime / 2 + TestExecutorFactory.observingTime / 2);
 
+
         // 6. build 2nd request
         RecoveryRequest r2 = RecoveryRequest.builder()
-                .problemId(101L)
+                .problemId(102L)
                 .isSameProblem(true)
                 .recoveryRequestSteps(Arrays.asList(
                         RecoveryRequestStep.builder()
@@ -374,19 +374,17 @@ public class ExpertControllerApplicationTests {
                         "acceptanceDecision", equalTo("acceptedToContinue"),
                         "recoveryProcedureId", notNullValue());
 
-        // 8. Assert status of the service, job should be finished by now, should be in observing
+        // 8. Assert status of the service, job should be finished by now, should NOT be in observing
         given().header(jsonHeader)
                 .get("/service-status").then()
                 .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "executorState", equalTo("Observe")
+                        "executorState", not("Observe") // observe would be if we didn't send 2nd request
                 );
 
-        Thread.sleep(TestExecutorFactory.observingTime / 2);
 
-
-        // 9. Assert status of the service, 1st job and observation period should be finished by now
+        // 9. Assert status of the service, 1st job and observation period should be interrupted by the 2nd request
         given().header(jsonHeader)
                 .get("/service-status").then()
                 .assertThat()
@@ -395,16 +393,17 @@ public class ExpertControllerApplicationTests {
                         "executorState", equalTo("AwaitingApproval")
                 );
 
-        ApprovalResponse approvalResponse2 = generateApprovalResponse(10L, 1);
+        ApprovalResponse approvalResponse2 = generateApprovalResponse(1L, 1);
         stompSession.send(SEND_APPROVE, approvalResponse2);
 
 
-        given().header(jsonHeader).body(101L).post("/finished").then().assertThat()
-                .statusCode(equalTo(HttpStatus.OK.value()));
 
 
         // Finished signal was sent during recovering state - it will be delayed until observe period
         Thread.sleep(TestExecutorFactory.recoveringTime);
+
+        given().header(jsonHeader).body(102L).post("/finished").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()));
 
         // Delay of the finish signal is 1s, wait 2x worst case (so that transition goes completed->Idle
         Thread.sleep(2* 1000);
@@ -416,8 +415,20 @@ public class ExpertControllerApplicationTests {
                 .assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
-                        "executorState", equalTo("Idle")
-                );
+
+                        "executorState", equalTo("Idle"),
+                        "lastProcedureStatus.actionSummary.content", equalTo(
+                                Arrays.asList(
+                                        "Procedure starts",
+                                        "Job J1 accepted",
+                                        "Job J1 completed" ,
+                                        "Procedure continues, received signal problem is not fixed",
+                                        "Job J1 didn't fix the problem",
+                                        "Job J2 accepted",
+                                        "Job J2 completed",
+                                        "Recovery procedure completed successfully"))
+
+                        );
 
 
     }

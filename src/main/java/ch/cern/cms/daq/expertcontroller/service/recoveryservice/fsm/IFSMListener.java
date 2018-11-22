@@ -47,6 +47,8 @@ public interface IFSMListener {
 
     FSMEvent onProcedureAccepted();
 
+    FSMEvent onProcedureContinues();
+
     RecoveryJob getCurrentJob();
 
     FSMEvent onApprovedJobNotExist();

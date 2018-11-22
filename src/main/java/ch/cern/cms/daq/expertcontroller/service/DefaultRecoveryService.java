@@ -121,10 +121,11 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 logger.info("Accepted to continue recovery " + request);
                 response.setRecoveryProcedureId(recoveryProcedureExecutor.getExecutedProcedure().getId());
 
+                RecoveryProcedure procedureToContinue = recoveryProcedureExecutor.getExecutedProcedure();
+                logger.info("Continue request brings new condition id: " + request.getProblemId());
+                procedureToContinue.getProblemIds().add(request.getProblemId());
+                recoveryProcedureExecutor.continueCurrentProcedure();
                 //TODO: set which problem id is continued (Expert must match?)
-                //TODO: set executor to continue
-                //TODO: add problem id to recovery procedure
-
 
                 break;
             case "acceptedToPostpone":
@@ -398,7 +399,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                                           .collect(Collectors.toList()))
                         .problemTitle(recoveryRequest.getProblemTitle())
                         .executedJobs(new ArrayList<>())
-                        .problemIds(Arrays.asList(recoveryRequest.getProblemId()))
+                        .problemIds(new ArrayList<>(Arrays.asList(recoveryRequest.getProblemId())))
                         .build();
 
         if (recoveryProcedure.getProcedure() == null || recoveryProcedure.getProcedure().size() == 0) {

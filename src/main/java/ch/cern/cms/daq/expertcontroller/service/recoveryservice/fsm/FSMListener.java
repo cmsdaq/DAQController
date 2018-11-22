@@ -121,7 +121,23 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onProcedureAccepted() {
         logger.info("Procedure accepted");
+        reportSteps.add(RecoveryEvent.builder()
+                                .content("Whole procedure accepted")
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
         executor.setForceAccept(true);
+
+        return null;
+    }
+
+    @Override
+    public FSMEvent onProcedureContinues() {
+        reportSteps.add(RecoveryEvent.builder()
+                                .content("Procedure continues, received signal problem is not fixed")
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
 
         return null;
     }

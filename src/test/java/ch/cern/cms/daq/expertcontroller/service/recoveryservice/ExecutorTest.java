@@ -244,8 +244,10 @@ public class ExecutorTest {
         Assert.assertEquals(State.Idle, fsm.getState());
 
         Assert.assertEquals(Arrays.asList("Procedure starts",
+                                          "Whole procedure accepted",
                                           "Job J1 accepted",
                                           "Job J1 finished with exception",
+                                          "Whole procedure accepted", //TODO: do you really need this 2nd time?
                                           "Job J2 accepted",
                                           "Job J2 finished with exception",
                                           "Next job not found, recovery failed"

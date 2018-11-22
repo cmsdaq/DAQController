@@ -119,6 +119,18 @@ public class Executor implements IExecutor {
     }
 
     @Override
+    public void continueCurrentProcedure() {
+
+        if (fsm.getState() == State.Observe) {
+            logger.info("Cancelling observation job on continue procedure signal");
+            future.cancel(true);
+        }
+        listener.onProcedureContinues();
+        logger.info("Sending NoEffect to FSM based on request to continue");
+        fsm.transition(FSMEvent.NoEffect);
+    }
+
+    @Override
     public void approveRecovery(ApprovalResponse approvalResponse) {
 
         if (executedProcedure == null) {
@@ -156,22 +168,23 @@ public class Executor implements IExecutor {
             logger.info("Default procedure: " + defaultProcedureId + " with step:" + defaultStepIndex);
 
             // 1. check if response concerns the same recovery procedure and job
-            boolean defaultJobContext =
-                    defaultProcedureId.equals(approvalResponse.getRecoveryProcedureId())
-                            && defaultStepIndex.equals(approvalResponse.getStep());
+
+            boolean defaultProcedureContext =
+                    defaultProcedureId.equals(approvalResponse.getRecoveryProcedureId());
+            boolean defaultJobContext = defaultStepIndex.equals(approvalResponse.getStep());
 
             /* default job accepted */
-            if (defaultJobContext && approvalResponse.getApproved()) {
+            if (defaultProcedureContext && defaultJobContext && approvalResponse.getApproved()) {
                 fsm.transition(FSMEvent.JobAccepted);
             }
 
             /* default job rejected */
-            else if (defaultJobContext && !approvalResponse.getApproved()) {
+            else if (defaultProcedureContext && defaultJobContext && !approvalResponse.getApproved()) {
                 fsm.transition(FSMEvent.JobRejected);
             }
 
             /* other job accepted */
-            else if (!defaultJobContext && approvalResponse.getApproved()) {
+            else if (defaultProcedureContext && !defaultJobContext && approvalResponse.getApproved()) {
                 FSMEvent event = forceSelectJob(approvalResponse.getStep());
                 if (event != null) {
                     logger.info("Force selecting job resulted in event: " + event);
@@ -179,9 +192,14 @@ public class Executor implements IExecutor {
                 }
             }
 
-            /* other job rejected */
-            else if (!defaultJobContext && !approvalResponse.getApproved()) {
+            /* other job or other procedure or rejected */
+            else {
                 // don't do anything
+                logger.info(String.format(
+                        "Nothing to approve. Current procedure/job id is: %s/%s, but received %s/%s with approval %s",
+                        defaultProcedureId, defaultStepIndex,
+                        approvalResponse.getRecoveryProcedureId(), approvalResponse.getStep(),
+                        approvalResponse.getApproved()));
             }
         }
     }

@@ -33,6 +33,8 @@ public interface IExecutor {
      */
     List<RecoveryEvent> start(RecoveryProcedure recoveryJob, boolean wait);
 
+    void continueCurrentProcedure();
+
     /**
      * Approve given recovery step
      *
