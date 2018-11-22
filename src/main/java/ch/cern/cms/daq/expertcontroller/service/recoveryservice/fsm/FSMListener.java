@@ -6,6 +6,7 @@ import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,8 +16,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * This class listens to events in FSM. It is only reactive. It doesn't initiate any actions.
- * It's purpose is to observe, report, persit events and transitions
+ * This class listens to events in FSM. It is only reactive. It doesn't initiate any actions. It's purpose is to
+ * observe, report, persit events and transitions
  */
 @Builder
 public class FSMListener implements IFSMListener {
@@ -28,6 +29,7 @@ public class FSMListener implements IFSMListener {
     private RecoveryProcedure currentProcedure;
 
     @Getter
+    @Setter
     private RecoveryJob currentJob;
 
     List<Event> reportSteps;
@@ -65,7 +67,6 @@ public class FSMListener implements IFSMListener {
         if (nextJob != null) {
             logger.info("Next job found: " + nextJob.getStepIndex() + ", " + nextJob.getJob());
 
-            currentProcedure.getExecutedJobs().add(nextJob);
             currentJob = nextJob;
             return FSMEvent.NextJobFound;
         } else {
@@ -105,9 +106,42 @@ public class FSMListener implements IFSMListener {
 
         reportSteps.add(Event.builder()
                                 .content("Job " + currentJob.getJob() + " accepted")
+                                .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
                                 .type("processing")
                                 .build());
+
+        currentProcedure.getExecutedJobs().add(currentJob);
+        currentJob.setStart(OffsetDateTime.now());
+
+        currentJob.setStatus(State.Recovering.toString());
+
+        currentJob.setEnd(null);
+        onUpdateProcedure();
+        return executor.callRecoveryExecutionConsumer(currentJob);
+    }
+
+
+    @Override
+    public FSMEvent onProcedureAccepted() {
+        logger.info("Procedure accepted");
+        executor.setForceAccept(true);
+
+        return null;
+    }
+
+
+    @Override
+    public FSMEvent onOtherJobAccepted() {
+        logger.info("Force selected job " + currentJob.getJob() + " accepted");
+
+        reportSteps.add(Event.builder()
+                                .content("Force selected job " + currentJob.getJob() + " accepted")
+                                .stepIndex(currentJob.getStepIndex())
+                                .date(OffsetDateTime.now())
+                                .type("processing")
+                                .build());
+        currentProcedure.getExecutedJobs().add(currentJob);
         currentJob.setStart(OffsetDateTime.now());
 
         currentJob.setStatus(State.Recovering.toString());
@@ -122,6 +156,7 @@ public class FSMListener implements IFSMListener {
 
         reportSteps.add(Event.builder()
                                 .content("Job " + currentJob.getJob() + " completed")
+                                .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
                                 .type("processing")
                                 .build());
@@ -140,6 +175,7 @@ public class FSMListener implements IFSMListener {
 
         reportSteps.add(Event.builder()
                                 .content("Job " + currentJob.getJob() + " didn't fix the problem")
+                                .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
                                 .type("processing")
                                 .build());
@@ -166,8 +202,10 @@ public class FSMListener implements IFSMListener {
 
         executor.callStatusReportConsumer(currentProcedure, reportSteps);
 
-        if(onUpdateConsumer != null)
+        if (onUpdateConsumer != null)
             onUpdateConsumer.accept(currentProcedure);
+
+        executor.setForceAccept(false);
 
         return null;
     }
@@ -189,7 +227,7 @@ public class FSMListener implements IFSMListener {
     public FSMEvent onNextJobFound() {
         logger.info("Next job found: " + currentJob.getJob() + " Passing to approval request consumer");
 
-        if(onUpdateConsumer != null)
+        if (onUpdateConsumer != null)
             onUpdateConsumer.accept(currentProcedure);
 
         return executor.callApprovalRequestConsumer(currentJob);
@@ -199,6 +237,7 @@ public class FSMListener implements IFSMListener {
     public FSMEvent onTimeout() {
         reportSteps.add(Event.builder()
                                 .content("Job: " + currentJob.getJob() + " times out")
+                                .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
                                 .type("timeout")
                                 .build());
@@ -215,7 +254,7 @@ public class FSMListener implements IFSMListener {
                                 .type("exception")
                                 .build());
 
-        if(currentJob != null && currentJob.getEnd() == null){
+        if (currentJob != null && currentJob.getEnd() == null) {
             currentJob.setEnd(OffsetDateTime.now());
             currentJob.setStatus(State.Failed.toString());
         }
@@ -230,7 +269,8 @@ public class FSMListener implements IFSMListener {
         currentJob.setStatus(State.Failed.toString());
 
         reportSteps.add(Event.builder()
-                                .content("Job "+ currentJob.getJob()+" finished with exception")
+                                .content("Job " + currentJob.getJob() + " finished with exception")
+                                .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
                                 .type("exception")
                                 .build());
@@ -282,6 +322,24 @@ public class FSMListener implements IFSMListener {
         return FSMEvent.ReportStatus;
     }
 
+    @Override
+    public FSMEvent onApprovedJobNotExist() {
+        reportSteps.add(Event.builder()
+                                .content("Force selected job doesn't exist")
+                                .date(OffsetDateTime.now())
+                                .type("exception")
+                                .build());
+        return null;
+    }
+
+    @Override
+    public void onNewRcmsStatus(String status) {
+        currentJob.setRcmsStatus(status);
+        if (onUpdateConsumer != null)
+            onUpdateConsumer.accept(currentProcedure);
+
+    }
+
     private void onFinishProcedure() {
         currentProcedure.setEnd(OffsetDateTime.now());
         currentProcedure.setState(executor.getStatus().getState().toString());
@@ -289,7 +347,7 @@ public class FSMListener implements IFSMListener {
         if (persistResultsConsumer != null)
             persistResultsConsumer.accept(currentProcedure);
 
-        if(onUpdateConsumer != null)
+        if (onUpdateConsumer != null)
             onUpdateConsumer.accept(currentProcedure);
 
     }
@@ -301,7 +359,7 @@ public class FSMListener implements IFSMListener {
         if (persistResultsConsumer != null)
             persistResultsConsumer.accept(currentProcedure);
 
-        if(onUpdateConsumer != null)
+        if (onUpdateConsumer != null)
             onUpdateConsumer.accept(currentProcedure);
 
 

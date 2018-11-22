@@ -285,8 +285,9 @@ public class ExpertControllerApplicationTests {
         given().header(jsonHeader).body(101L).post("/finished").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()));
 
-        Thread.sleep(2000);
+        Thread.sleep(2500);
 
+        System.out.println("Checking final status");
 
         // 5. Assert status of the service
         given().header(jsonHeader)

@@ -19,6 +19,8 @@ public interface IFSMListener {
 
     FSMEvent onJobAccepted();
 
+    FSMEvent onOtherJobAccepted();
+
     FSMEvent onJobCompleted();
 
     FSMEvent onJobNoEffect();
@@ -43,8 +45,16 @@ public interface IFSMListener {
 
     FSMEvent onCancelled();
 
+    FSMEvent onProcedureAccepted();
+
     RecoveryJob getCurrentJob();
 
+    FSMEvent onApprovedJobNotExist();
+
+    void setCurrentJob(RecoveryJob job);
+
     RecoveryProcedure getCurrentProcedure();
+
+    void onNewRcmsStatus(String status);
 
 }

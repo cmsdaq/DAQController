@@ -28,4 +28,9 @@ public class Event {
     private String type;
 
     private String content;
+
+    /**
+     * Index of step this event in context of
+     */
+    private Integer stepIndex;
 }

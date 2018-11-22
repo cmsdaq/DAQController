@@ -1,9 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.controller;
 
-import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
-import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryProcedureStatus;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryServiceStatus;
+import ch.cern.cms.daq.expertcontroller.datatransfer.*;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +41,14 @@ public class DashboardController {
         recoveryService.submitApprovalDecision(approvalResponse);
         return recoveryService.getRecoveryServiceStatus();
     }
+
+    @MessageMapping("/interrupt")
+    @SendTo("/topic/interrupt-status")
+    public InterruptResponse interrupt() {
+        logger.info("Interrupt requested");
+        return recoveryService.interrupt();
+    }
+
 
     /**
      * Called by the dashboard client when requests status

@@ -10,6 +10,7 @@ import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.IFSMListener
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +87,9 @@ public class Executor implements IExecutor {
      */
     private Future<FSMEvent> future;
 
+    @Getter @Setter
+    private boolean forceAccept;
+
     @Override
     public List<Event> start(RecoveryProcedure recoveryProcedure) {
         return start(recoveryProcedure, false);
@@ -123,33 +127,72 @@ public class Executor implements IExecutor {
         Long defaultProcedureId = executedProcedure.getId();
         Integer defaultStepIndex = listener.getCurrentJob().getStepIndex();
 
-        logger.info("Default procedure: " + defaultProcedureId + " with step:" + defaultStepIndex);
+        /* Procedure specific approval */
+        if(approvalResponse.getProcedureContext() != null && approvalResponse.getProcedureContext()){
+            logger.info("Whole recovery will be now executed");
 
-        // 1. check if response concerns the same recovery procedure and job
-        boolean defaultJobContext =
-                defaultProcedureId.equals(approvalResponse.getRecoveryProcedureId())
-                        && defaultStepIndex.equals(approvalResponse.getStep());
+            boolean defaultProcedureContext =
+                    defaultProcedureId.equals(approvalResponse.getRecoveryProcedureId());
 
-        /* default job accepted */
-        if (defaultJobContext && approvalResponse.getApproved()) {
-            fsm.transition(FSMEvent.JobAccepted);
+            if(defaultProcedureContext){
+                logger.info("Accept all jobs in the procedure");
+                fsm.transition(FSMEvent.ProcedureAccepted);
+
+            } else{
+                logger.info(
+                        "Approval response is in context of procedure that is not currently executed: " +
+                                defaultProcedureId + " vs " + approvalResponse.getRecoveryProcedureId());
+            }
+
         }
 
-        /* default job rejected */
-        else if (defaultJobContext && !approvalResponse.getApproved()) {
-            fsm.transition(FSMEvent.JobRejected);
-        }
+        /* Job specific approval */
+        else {
+            logger.info("Default procedure: " + defaultProcedureId + " with step:" + defaultStepIndex);
 
-        /* other job accepted */
-        else if (!defaultJobContext && approvalResponse.getApproved()) {
-            fsm.transition(FSMEvent.OtherJobAccepted);
-        }
+            // 1. check if response concerns the same recovery procedure and job
+            boolean defaultJobContext =
+                    defaultProcedureId.equals(approvalResponse.getRecoveryProcedureId())
+                            && defaultStepIndex.equals(approvalResponse.getStep());
 
-        /* other job rejected */
-        else if (!defaultJobContext && !approvalResponse.getApproved()) {
-            // don't do anything
+            /* default job accepted */
+            if (defaultJobContext && approvalResponse.getApproved()) {
+                fsm.transition(FSMEvent.JobAccepted);
+            }
+
+            /* default job rejected */
+            else if (defaultJobContext && !approvalResponse.getApproved()) {
+                fsm.transition(FSMEvent.JobRejected);
+            }
+
+            /* other job accepted */
+            else if (!defaultJobContext && approvalResponse.getApproved()) {
+                FSMEvent event = forceSelectJob(approvalResponse.getStep());
+                if (event != null) {
+                    logger.info("Force selecting job resulted in event: " + event);
+                    fsm.transition(event);
+                }
+            }
+
+            /* other job rejected */
+            else if (!defaultJobContext && !approvalResponse.getApproved()) {
+                // don't do anything
+            }
         }
     }
+
+    public FSMEvent forceSelectJob(int stepIndex){
+        RecoveryJob recoveryJob = executedProcedure.outOfSequenceJob(stepIndex);
+        if(recoveryJob == null){
+            listener.onApprovedJobNotExist();
+            // TODO: perhaps throw exception so that this information is passed to client
+            return null;
+        } else {
+            listener.setCurrentJob(recoveryJob);
+            return FSMEvent.OtherJobAccepted;
+        }
+    }
+
 
     @Override
     public void interrupt() {
@@ -269,6 +312,12 @@ public class Executor implements IExecutor {
     public void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<Event> report) {
         recoveryProcedure.setEnd(OffsetDateTime.now());
         statusReportConsumer.accept(recoveryProcedure, report);
+    }
+
+    @Override
+    public void rcmsStatusUpdate(String status) {
+        listener.onNewRcmsStatus(status);
+
     }
 
 }

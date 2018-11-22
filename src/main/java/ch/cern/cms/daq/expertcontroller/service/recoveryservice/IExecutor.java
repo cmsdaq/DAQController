@@ -100,4 +100,12 @@ public interface IExecutor {
      * @param report current recovery procedure acceptanceDecision
      */
     void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<Event> report);
+
+    FSMEvent forceSelectJob(int stepIndex);
+
+    void setForceAccept(boolean forceAccept);
+
+    boolean isForceAccept();
+
+    void rcmsStatusUpdate(String status);
 }

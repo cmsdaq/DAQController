@@ -38,9 +38,13 @@ public class ExecutorFactory {
     @Autowired
     IRecoveryService recoveryService;
 
+    @Autowired
+    IExecutor executor;
+
     protected static RcmsController srcmsController;
     protected static RecoveryProcedureRepository srecoveryProcedureRepository;
     protected static IRecoveryService srecoveryService;
+    protected static IExecutor sexecutor;
 
 
     @PostConstruct
@@ -48,6 +52,9 @@ public class ExecutorFactory {
         ExecutorFactory.srcmsController = rcmsController;
         ExecutorFactory.srecoveryProcedureRepository = recoveryProcedureRepository;
         ExecutorFactory.srecoveryService = recoveryService;
+        ExecutorFactory.sexecutor = executor;
+
+        rcmsController.setRcmsStatusConsumer(rcmsStatusChangeConsumer);
     }
 
     private static Logger logger = LoggerFactory.getLogger(ExecutorFactory.class);
@@ -107,8 +114,10 @@ public class ExecutorFactory {
                 .defaultStepIndex(recoveryJob.getStepIndex())
                 .build();
 
-
         srecoveryService.onApprovalRequest(approvalRequest);
+        if(sexecutor.isForceAccept()){
+            return FSMEvent.JobAccepted;
+        }
 
         return null;
 
@@ -147,6 +156,12 @@ public class ExecutorFactory {
         logger.info("Timeout of observation");
         return FSMEvent.NoEffect;
 
+    };
+
+    public static Consumer<String> rcmsStatusChangeConsumer = status ->{
+
+        logger.info("Consuming new RCMS status: " + status);
+        sexecutor.rcmsStatusUpdate(status);
     };
 
     public static Consumer<RecoveryProcedure> persistResultsConsumer = recoveryProcedure -> {

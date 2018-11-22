@@ -28,6 +28,11 @@ class IFSMListenerMock implements IFSMListener {
     }
 
     @Override
+    public FSMEvent onOtherJobAccepted() {
+        return null;
+    }
+
+    @Override
     public FSMEvent onJobCompleted() {
 
         System.out.println("on job completed");
@@ -109,13 +114,34 @@ class IFSMListenerMock implements IFSMListener {
     }
 
     @Override
+    public FSMEvent onProcedureAccepted() {
+        System.out.println("on procedure accepted");
+        return null;
+    }
+
+    @Override
     public RecoveryJob getCurrentJob() {
         return null;
     }
 
     @Override
+    public FSMEvent onApprovedJobNotExist() {
+        return null;
+    }
+
+    @Override
+    public void setCurrentJob(RecoveryJob job) {
+
+    }
+
+    @Override
     public RecoveryProcedure getCurrentProcedure() {
         return null;
+    }
+
+    @Override
+    public void onNewRcmsStatus(String status) {
+        System.out.println("New rcms status: " + status);
     }
 
     @Override

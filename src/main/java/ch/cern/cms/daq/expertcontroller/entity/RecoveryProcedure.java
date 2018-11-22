@@ -64,6 +64,21 @@ public class RecoveryProcedure {
     @Transient
     private RecoveryJob nextStep;
 
+    public RecoveryJob outOfSequenceJob(int index){
+
+        Iterator<RecoveryJob> i = procedure.iterator();
+
+        while(i.hasNext()){
+            RecoveryJob current = i.next();
+            if(current.getStepIndex() == index){
+                iterator = i;
+                return current;
+            }
+        }
+        return null;
+
+    }
+
     //TODO: is it good place for this?
     public RecoveryJob getNextJob() {
         if (procedure == null) {

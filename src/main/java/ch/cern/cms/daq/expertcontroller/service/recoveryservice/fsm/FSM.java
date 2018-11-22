@@ -69,6 +69,8 @@ public class FSM {
         addToArray(State.SelectingJob, FSMEvent.FinishedByItself, State.Cancelled);
 
         addToArray(State.AwaitingApproval, FSMEvent.JobAccepted, State.Recovering);
+        addToArray(State.AwaitingApproval, FSMEvent.OtherJobAccepted, State.Recovering);
+        addToArray(State.AwaitingApproval, FSMEvent.ProcedureAccepted, State.Recovering);
         addToArray(State.AwaitingApproval, FSMEvent.Timeout, State.Cancelled);
         addToArray(State.AwaitingApproval, FSMEvent.FinishedByItself, State.Cancelled);
 
@@ -111,6 +113,13 @@ public class FSM {
             case JobAccepted:
                 result = listener.onJobAccepted();
                 break;
+            case ProcedureAccepted:
+                listener.onProcedureAccepted();
+                result = listener.onJobAccepted();
+                break;
+            case OtherJobAccepted:
+                result = listener.onOtherJobAccepted();
+                break;
             case JobCompleted:
                 result = listener.onJobCompleted();
                 break;
@@ -146,6 +155,7 @@ public class FSM {
                 break;
             case FinishedByItself:
                 result = listener.onCancelled();
+
         }
 
         if (result != null) {

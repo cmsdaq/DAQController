@@ -20,4 +20,6 @@ public class ApprovalResponse {
 
     Boolean approved;
 
+    Boolean procedureContext;
+
 }

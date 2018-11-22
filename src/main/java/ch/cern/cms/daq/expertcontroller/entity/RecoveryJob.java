@@ -65,6 +65,9 @@ public class RecoveryJob {
     @Transient
     Long procedureId;
 
+    @Transient
+    String rcmsStatus;
+
     public String toCompactString(){
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClass().getSimpleName());

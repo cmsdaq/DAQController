@@ -14,4 +14,6 @@ public class Event {
     private String type;
 
     private String content;
+
+    private Integer stepIndex;
 }

@@ -8,6 +8,7 @@ import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutorStatus;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
+import lombok.Getter;
 import org.apache.log4j.Logger;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
@@ -173,8 +174,9 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
 
     /**
-     * This service status describes current executor status and last procedure.
-     * Last procedure can be finished or ongoing. It's based on current state, database is not accessed.
+     * This service status describes current executor status and last procedure. Last procedure can be finished or
+     * ongoing. It's based on current state, database is not accessed.
+     *
      * @return
      */
     @Override
@@ -206,7 +208,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             procedureStatusBuilder.jobStatuses(null);
 
         }
-        RecoveryProcedureStatus recoveryProcedureStatus= procedureStatusBuilder.build();
+        RecoveryProcedureStatus recoveryProcedureStatus = procedureStatusBuilder.build();
 
         // TODO: include how many times the steps were executed etc.
         // TODO: set up procedure id
@@ -239,7 +241,9 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             modelMapper.getConfiguration()
                     .setMatchingStrategy(MatchingStrategies.STRICT);
 
-            if(actionSummary != null) {
+            logger.info(actionSummary.stream().map(a -> a.getId()).collect(Collectors.toList()));
+
+            if (actionSummary != null) {
                 List<Event> actionSummaryDTO =
                         actionSummary.stream()
                                 .map(e -> modelMapper.map(e, ch.cern.cms.daq.expertcontroller.datatransfer.Event.class))
@@ -252,30 +256,30 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             recoveryProcedureStatus.setConditionIds(lastExecutedProcedure.getProblemIds());
 
             ArrayList<RecoveryJobStatus> jobStatuses = new ArrayList<>();
-            lastExecutedProcedure.getProcedure().stream().forEach(j->{
+            lastExecutedProcedure.getProcedure().stream().forEach(j -> {
                 Date started = null, finished = null;
-                if(j.getStart() != null)
+                if (j.getStart() != null)
                     started = Date.from(j.getStart().toInstant());
 
-                if(j.getEnd() != null)
+                if (j.getEnd() != null)
                     finished = Date.from(j.getEnd().toInstant());
 
                 // count jobs with given step index
 
-                logger.info("Counting executed times for step " + j.getStepIndex());
-                logger.info("... from executed jobs: " + lastExecutedProcedure.getExecutedJobs() );
+                logger.trace("Counting executed times for step " + j.getStepIndex());
+                logger.trace("... from executed jobs: " + lastExecutedProcedure.getExecutedJobs());
                 Long executed = 0L;
-                if(lastExecutedProcedure.getExecutedJobs() != null)
+                if (lastExecutedProcedure.getExecutedJobs() != null)
                     executed = lastExecutedProcedure.getExecutedJobs().stream()
-                            .filter(c->c.getStepIndex() == j.getStepIndex())
-                            .filter(c->c.getEnd() != null).count();
+                            .filter(c -> c.getStepIndex() == j.getStepIndex())
+                            .filter(c -> c.getEnd() != null).count();
 
                 RecoveryJobStatus recoveryJobStatus = RecoveryJobStatus.builder()
                         .started(started)
                         .finished(finished)
                         .stepIndex(j.getStepIndex())
                         .status(j.getStatus())
-                        .rcmsStatus("rcmsTest")
+                        .rcmsStatus(j.getRcmsStatus())
                         .timesExecuted(executed.intValue())
                         .build();
 
@@ -301,18 +305,28 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
         Long procedureId = approvalResponse.getRecoveryProcedureId();
         Integer step = approvalResponse.getStep();
+        boolean isProcedureContext = false;
+
+        if (approvalResponse.getProcedureContext() != null && approvalResponse.getProcedureContext() == true) {
+            isProcedureContext = true;
+        }
 
         if (procedureId == null) {
             throw new IllegalArgumentException("The 'recoveryProcedureId' parameter must not be null or empty");
         }
+        if (step == null) {
+            if (!isProcedureContext)
+                throw new IllegalArgumentException("The 'step' parameter must not be null or empty");
+        }
         if (approvalResponse.getApproved() == null) {
             throw new IllegalArgumentException("The 'approved' parameter must not be null or empty");
         }
-        if (step == null) {
-            throw new IllegalArgumentException("The 'step' parameter must not be null or empty");
-        }
 
-        logger.info("Received approval response for procedure: " + procedureId + " and step: " + step);
+        if (isProcedureContext) {
+            logger.info("Received approval response for whole procedure");
+        } else {
+            logger.info("Received approval response for procedure: " + procedureId);
+        }
 
         recoveryProcedureExecutor.approveRecovery(approvalResponse);
 
@@ -336,7 +350,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
     }
 
 
-    public void onApprovalRequest(ApprovalRequest approvalRequest){
+    public void onApprovalRequest(ApprovalRequest approvalRequest) {
         logger.info("Asking clients for appproval " + approvalRequest);
         dashboardController.requestApprove(approvalRequest);
     }

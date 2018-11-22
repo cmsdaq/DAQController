@@ -1,14 +1,15 @@
 package ch.cern.cms.daq.expertcontroller.service.rcms;
 
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
+import lombok.Setter;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import rcms.fm.fw.service.command.CommandServiceException;
 
-import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 
 @Service
@@ -28,6 +29,9 @@ public class RcmsController {
     public String getSubsystemStatus() {
         return null;
     }
+
+    @Setter
+    private Consumer<String> rcmsStatusConsumer;
 
 
     public RcmsController() {
@@ -126,6 +130,8 @@ public class RcmsController {
         controller.setSchedules(schedules);
         controller.startRecovery();
 
+        String lastRecoveryAction = null;
+
         while (controller.isRecoveryOngoing()) {
             String recoveryAction = controller.getRecoveryAction();
             Map<String, String> subsytemRecoveryActions = controller.getSubsystemRecoveryActions();
@@ -133,8 +139,13 @@ public class RcmsController {
             logger.trace(recoveryAction);
             logger.trace(subsytemRecoveryActions);
 
-            //TODO: do sth whenever finalStatus changes. Perhaps callback will be ok.
-
+            if(lastRecoveryAction != recoveryAction){
+                if (rcmsStatusConsumer != null) {
+                    logger.info("New L0A status: " + recoveryAction);
+                    rcmsStatusConsumer.accept(recoveryAction);
+                }
+            }
+            lastRecoveryAction = recoveryAction;
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException intEx) {

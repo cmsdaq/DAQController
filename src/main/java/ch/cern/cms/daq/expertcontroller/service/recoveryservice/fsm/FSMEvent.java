@@ -12,6 +12,7 @@ public enum FSMEvent {
      */
     JobAccepted,
 
+
     /**
      * Job has been rejected
      */
@@ -22,11 +23,12 @@ public enum FSMEvent {
      */
     OtherJobAccepted,
 
+    ProcedureAccepted,
+
     /**
      * Job has completed - RCMS has completed the job
      */
     JobCompleted,
-
 
     /**
      *
@@ -46,6 +48,11 @@ public enum FSMEvent {
     NextJobNotFound,
 
     NextJobFound,
+
+    /**
+     * If operator accepts other step than recommended and it doesn't exist
+     */
+    AcceptedJobDoesNotExist,
 
     Timeout,
 
