@@ -223,12 +223,26 @@ public class ExecutorFactory {
             recoveryJobConsumer,
             report,
             fixedDelayObserver,
-            2,
+            1200, //TODO: investigate, never timeouts
             600,
             persistResultsConsumer,
             onProcedureUpdateConsumer,
             isAvailableSupplier,
             interruptConsumer
+
+    );
+
+    public static IExecutor FAKE_EXECUTOR = build(
+            manualApprovalConsumer,
+            recoveryJobFakeConsumer,
+            report,
+            fixedDelayObserver,
+            60,
+            600,
+            persistResultsConsumer,
+            onProcedureUpdateConsumer,
+            fakeIsAvailableSupplier,
+            interruptFakeConsumer
 
     );
 
