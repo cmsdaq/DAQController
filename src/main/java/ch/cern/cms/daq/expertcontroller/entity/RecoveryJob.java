@@ -24,7 +24,7 @@ public class RecoveryJob {
 
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     /**
@@ -32,8 +32,10 @@ public class RecoveryJob {
      */
     String job;
 
+    @Column(name = "start_date")
     OffsetDateTime start;
 
+    @Column(name = "end_date")
     OffsetDateTime end;
 
     Boolean issueTTCHardReset;
@@ -55,9 +57,6 @@ public class RecoveryJob {
     @ElementCollection
     @CollectionTable(name ="recoveryJobReset")
     Set<String> reset;
-
-    /*TODO: remove this: job can be executed only once (step will count jobs with given stepIndex)*/
-    Integer executionCount;
 
     String status;
 
@@ -98,10 +97,6 @@ public class RecoveryJob {
         if(end != null){
             sb.append(", ").append("end=").append(end);
         }
-        if(executionCount != null){
-            sb.append(" ,").append("executionCount=").append(executionCount);
-        }
-
         sb.append(")");
         return sb.toString();
     }

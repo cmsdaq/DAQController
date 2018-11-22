@@ -60,10 +60,6 @@ public class FSMListener implements IFSMListener {
 
         RecoveryJob nextJob = currentProcedure.getNextJob();
 
-        if (currentProcedure.getExecutedJobs() == null) {
-            currentProcedure.setExecutedJobs(new ArrayList<>());
-        }
-
         if (nextJob != null) {
             logger.info("Next job found: " + nextJob.getStepIndex() + ", " + nextJob.getJob());
 

@@ -397,6 +397,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                                                   .build())
                                           .collect(Collectors.toList()))
                         .problemTitle(recoveryRequest.getProblemTitle())
+                        .executedJobs(new ArrayList<>())
                         .problemIds(Arrays.asList(recoveryRequest.getProblemId()))
                         .build();
 

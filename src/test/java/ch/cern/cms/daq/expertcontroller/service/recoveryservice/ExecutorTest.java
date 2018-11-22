@@ -31,7 +31,7 @@ public class ExecutorTest {
         prepare(approvalConsumerThatAccepts, recoveryJobConsumerThatCompletes, observerThatFinishes);
 
         List<RecoveryJob> list = new ArrayList<>();
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
         List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Procedure starts", "Next job not found, recovery failed"),
@@ -44,7 +44,7 @@ public class ExecutorTest {
 
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("J1").build());
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
         List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Procedure starts",
@@ -61,7 +61,7 @@ public class ExecutorTest {
         List<RecoveryJob> list = Arrays.asList(
                 RecoveryJob.builder().job("J1").build(),
                 RecoveryJob.builder().job("J2").build());
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
         List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
 
@@ -81,7 +81,7 @@ public class ExecutorTest {
         prepare(approvalConsumerThatAccepts, recoveryJobConsumerThatHangs, observerThatFinishes);
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("VLJ").build());
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
         List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Procedure starts",
@@ -95,7 +95,7 @@ public class ExecutorTest {
         prepare(approvalConsumerThatAccepts, recoveryJobConsumerThatHangs, observerThatFinishes);
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("Very long job").build());
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
 
         (new Thread() {
             public void run() {
@@ -120,7 +120,7 @@ public class ExecutorTest {
         prepare(approvalConsumerThatAccepts, recoveryJobConsumerThatThrowsException, observerThatFinishes);
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("J1").build());
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
 
         List<RecoveryEvent> result = executor.start(job, true);
 
@@ -139,7 +139,7 @@ public class ExecutorTest {
 
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("J").build());
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
 
 
         ExecutorStatus status = executor.getStatus();
@@ -213,7 +213,7 @@ public class ExecutorTest {
                         .stepIndex(1)
                         .build()
         );
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
         List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
 
@@ -238,7 +238,7 @@ public class ExecutorTest {
                         .stepIndex(1)
                         .build()
         );
-        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
+        RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).executedJobs(new ArrayList<>()).build();
         List<RecoveryEvent> result = executor.start(job, true);
 
         Assert.assertEquals(State.Idle, fsm.getState());

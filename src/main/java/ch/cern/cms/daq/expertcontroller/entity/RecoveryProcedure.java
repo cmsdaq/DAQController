@@ -20,7 +20,7 @@ import java.util.List;
 public class RecoveryProcedure {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     /**
@@ -32,8 +32,10 @@ public class RecoveryProcedure {
 
     private String problemTitle;
 
+    @Column(name = "start_date")
     private OffsetDateTime start;
 
+    @Column(name = "end_date")
     private OffsetDateTime end;
 
     private String state;
@@ -41,12 +43,12 @@ public class RecoveryProcedure {
     /**
      * Jobs that were executed. Detailed information when and how many times there were executed.
      */
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.EAGER)
     @JoinColumn(name = "recovery_procedure_id")
     @OrderColumn(name = "list_index")
     private List<RecoveryJob> executedJobs;
 
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "recovery_procedure_id")
     @OrderColumn(name = "list_index")
     private List<RecoveryEvent> eventSummary;

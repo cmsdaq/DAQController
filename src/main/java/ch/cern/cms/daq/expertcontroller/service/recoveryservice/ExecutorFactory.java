@@ -4,6 +4,7 @@ import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryJobRepository;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
@@ -36,6 +37,9 @@ public class ExecutorFactory {
     RecoveryProcedureRepository recoveryProcedureRepository;
 
     @Autowired
+    RecoveryJobRepository recoveryJobRepository;
+
+    @Autowired
     IRecoveryService recoveryService;
 
     @Autowired
@@ -43,6 +47,7 @@ public class ExecutorFactory {
 
     protected static RcmsController srcmsController;
     protected static RecoveryProcedureRepository srecoveryProcedureRepository;
+    protected static RecoveryJobRepository srecoveryJobRepository;
     protected static IRecoveryService srecoveryService;
     protected static IExecutor sexecutor;
 
@@ -51,6 +56,7 @@ public class ExecutorFactory {
     public void init() {
         ExecutorFactory.srcmsController = rcmsController;
         ExecutorFactory.srecoveryProcedureRepository = recoveryProcedureRepository;
+        ExecutorFactory.srecoveryJobRepository = recoveryJobRepository;
         ExecutorFactory.srecoveryService = recoveryService;
         ExecutorFactory.sexecutor = executor;
 
@@ -169,7 +175,13 @@ public class ExecutorFactory {
     public static Consumer<RecoveryProcedure> persistResultsConsumer = recoveryProcedure -> {
 
         logger.info("Updating recovery procedure " + recoveryProcedure.getId());
+        for(RecoveryJob job: recoveryProcedure.getExecutedJobs()){
+            srecoveryJobRepository.save(job);
+        }
         srecoveryProcedureRepository.save(recoveryProcedure);
+
+
+
     };
 
     public static Consumer<RecoveryProcedure> onProcedureUpdateConsumer = recoveryProcedure -> {
