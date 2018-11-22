@@ -145,6 +145,8 @@ public class TestExecutorFactory extends ExecutorFactory {
 
     };
 
+    public static Supplier<Boolean> isAvailableSupplier = () -> true;
+
     public static IExecutor TEST_EXECUTOR = build(
             approvalConsumerThatNeverAccepts,
             recoveryJobConsumerThatCompletesImmediately,
@@ -153,6 +155,7 @@ public class TestExecutorFactory extends ExecutorFactory {
             1,
             printRecoveryProcedurePersistor,
             printOnUpdateConsumer,
+            isAvailableSupplier,
             interruptConsumer
     );
 
@@ -165,6 +168,7 @@ public class TestExecutorFactory extends ExecutorFactory {
             recoveringTime * 2,
             persistResultsConsumer,
             printOnUpdateConsumer,
+            isAvailableSupplier,
             interruptConsumer
     );
 

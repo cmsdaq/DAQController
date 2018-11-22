@@ -68,6 +68,7 @@ public class ExecutorFactory {
             Integer executionTimeout,
             Consumer<RecoveryProcedure> persistConsumer,
             Consumer<RecoveryProcedure> onUpdateConsumer,
+            Supplier<Boolean> availabilityConsumer,
             Runnable interruptConsumer) {
 
         IFSMListener listener = FSMListener.builder()
@@ -88,6 +89,7 @@ public class ExecutorFactory {
                 .approvalTimeout(approvalTimeout)
                 .executionTimeout(executionTimeout)
                 .interruptConsumer(interruptConsumer)
+                .isBusyConsumer(availabilityConsumer)
                 .build();
         ((FSMListener) listener).setExecutor(executor);
 
@@ -181,6 +183,16 @@ public class ExecutorFactory {
 
     };
 
+    public static Supplier<Boolean> isAvailableSupplier = () ->{
+        Boolean recoveryOngoing = srcmsController.isRecoveryOngoing();
+        boolean isAvailable = false;
+        logger.info(String.format("Checking availability of RCMS, is recovery ongoing: %s ", recoveryOngoing));
+        if(recoveryOngoing != null && !recoveryOngoing){
+            isAvailable = true;
+        }
+        return isAvailable;
+    };
+
 
     public static BiConsumer<RecoveryProcedure, List<Event>> report = (rp, s) -> {
         logger.info("Reporting the acceptanceDecision: " + s);
@@ -196,6 +208,7 @@ public class ExecutorFactory {
             600,
             persistResultsConsumer,
             onProcedureUpdateConsumer,
+            isAvailableSupplier,
             interruptConsumer
 
     );

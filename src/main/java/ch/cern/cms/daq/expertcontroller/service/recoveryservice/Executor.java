@@ -63,6 +63,11 @@ public class Executor implements IExecutor {
     protected Runnable interruptConsumer;
 
     /**
+     * Check if underlying job consumer is busy. In RCMS case that might be the manual recovery.
+     */
+    protected Supplier<Boolean> isBusyConsumer;
+
+    /**
      * Thread pool that will execute jobs. Eg. with one thread to allow to run 1 job at the time.
      */
     protected ExecutorService executorService;
@@ -191,6 +196,11 @@ public class Executor implements IExecutor {
             listener.setCurrentJob(recoveryJob);
             return FSMEvent.OtherJobAccepted;
         }
+    }
+
+    @Override
+    public boolean isAvailable() {
+        return isBusyConsumer.get();
     }
 
 

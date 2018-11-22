@@ -28,7 +28,7 @@ public interface IExecutor {
      * Submit new job to execute
      *
      * @param recoveryJob
-     * @param wait flag indicating whether the request should be executed synchronously
+     * @param wait        flag indicating whether the request should be executed synchronously
      * @return summary of actions performed in recovery
      */
     List<Event> start(RecoveryProcedure recoveryJob, boolean wait);
@@ -97,7 +97,7 @@ public interface IExecutor {
      * Call status report consumer
      *
      * @param recoveryProcedure recovery procedure in context of which status is reported
-     * @param report current recovery procedure acceptanceDecision
+     * @param report            current recovery procedure acceptanceDecision
      */
     void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<Event> report);
 
@@ -106,6 +106,14 @@ public interface IExecutor {
     void setForceAccept(boolean forceAccept);
 
     boolean isForceAccept();
+
+    /**
+     * Check if job consumer is available. Note that this is outside of FSM. E.g. manually executed recovery of which
+     * controller is not aware.
+     *
+     * @return
+     */
+    boolean isAvailable();
 
     void rcmsStatusUpdate(String status);
 }

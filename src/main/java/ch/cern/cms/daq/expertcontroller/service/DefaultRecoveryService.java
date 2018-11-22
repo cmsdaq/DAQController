@@ -75,11 +75,11 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             throw new IllegalArgumentException("Every recovery step in procedure should have 'stepIndex' assigned");
         }
 
+        RecoveryResponse response = new RecoveryResponse();
+
         logger.debug("New request has been submitted " + request);
 
-        RecoveryResponse response = new RecoveryResponse();
         String acceptanceDecision = acceptRecoveryRequestForExecution(request);
-
         response.setAcceptanceDecision(acceptanceDecision);
 
 
@@ -134,6 +134,9 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 logger.info("Rejected recovery " + request);
                 Long conditionId = recoveryProcedureExecutor.getExecutedProcedure().getProblemIds().iterator().next();
                 response.setRejectedDueToConditionId(conditionId);
+                break;
+            case "rejectedDueToManualRecovery":
+                logger.info("Rejected due to manual recovery " + request);
                 break;
             default:
                 break;
@@ -240,8 +243,6 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             ModelMapper modelMapper = new ModelMapper();
             modelMapper.getConfiguration()
                     .setMatchingStrategy(MatchingStrategies.STRICT);
-
-            logger.info(actionSummary.stream().map(a -> a.getId()).collect(Collectors.toList()));
 
             if (actionSummary != null) {
                 List<Event> actionSummaryDTO =
@@ -411,6 +412,8 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
      * <li>acceptedToContinue - when submitted recovery is the same as currently executed and current is in observe
      * period</li>
      * <li>acceptedToPostpone - when </li>
+     * <li>rejected</li>
+     * <li>rejectedDueToManualRecovery</li>
      * </ul>
      */
     protected String acceptRecoveryRequestForExecution(RecoveryRequest request) {
@@ -420,8 +423,12 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         RecoveryProcedure recoveryProcedure = recoveryProcedureExecutor.getExecutedProcedure();
 
         if (executorStatus.getState() == State.Idle) {
-            logger.debug("Following request has been accepted: " + request);
-            result = "accepted";
+            if(recoveryProcedureExecutor.isAvailable()) {
+                logger.debug("Following request has been accepted: " + request);
+                result = "accepted";
+            } else{
+                result = "rejectedDueToManualRecovery";
+            }
         } else {
             logger.info("There is procedure currently being executed: " + recoveryProcedure);
 
