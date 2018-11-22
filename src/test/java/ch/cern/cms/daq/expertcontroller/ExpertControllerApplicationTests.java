@@ -265,7 +265,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryProcedureId", notNullValue());
+                        "recoveryProcedureId", equalTo(1));
 
 
         // 3. Assert status of the service
@@ -278,7 +278,7 @@ public class ExpertControllerApplicationTests {
                 );
 
 
-        ApprovalResponse approvalResponse = generateApprovalResponse(10L, 0);
+        ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
         // 4. Send finish signal
@@ -524,7 +524,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("accepted"),
-                        "recoveryProcedureId", notNullValue());
+                        "recoveryProcedureId", equalTo(1));
 
         //3. check status of the service, should be awaiting approval
         given().header(jsonHeader)
@@ -533,7 +533,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "executorState", equalTo("AwaitingApproval"),
-                        "lastProcedureStatus.id", equalTo(10)
+                        "lastProcedureStatus.id", equalTo(1)
                 );
 
 
@@ -545,7 +545,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.CREATED.value()))
                 .body(
                         "acceptanceDecision", equalTo("acceptedWithPreemption"),
-                        "recoveryProcedureId", notNullValue());
+                        "recoveryProcedureId", equalTo(2));
 
         //3. check status of the service, should be awaiting approval
         given().header(jsonHeader)
@@ -554,8 +554,10 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()))
                 .body(
                         "executorState", equalTo("AwaitingApproval"),
-                        "lastProcedureStatus.id", equalTo(11) // NOTE that new procedure has been created
+                        "lastProcedureStatus.id", equalTo(2)// NOTE that new procedure has been created
                 );
+
+
     }
 
 
