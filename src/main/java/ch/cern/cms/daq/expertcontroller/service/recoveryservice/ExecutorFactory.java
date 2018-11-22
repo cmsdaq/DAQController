@@ -117,7 +117,7 @@ public class ExecutorFactory {
                 .build();
 
         srecoveryService.onApprovalRequest(approvalRequest);
-        if(sexecutor.isForceAccept()){
+        if (sexecutor.isForceAccept()) {
             return FSMEvent.JobAccepted;
         }
 
@@ -160,7 +160,7 @@ public class ExecutorFactory {
 
     };
 
-    public static Consumer<String> rcmsStatusChangeConsumer = status ->{
+    public static Consumer<String> rcmsStatusChangeConsumer = status -> {
 
         logger.info("Consuming new RCMS status: " + status);
         sexecutor.rcmsStatusUpdate(status);
@@ -183,11 +183,30 @@ public class ExecutorFactory {
 
     };
 
-    public static Supplier<Boolean> isAvailableSupplier = () ->{
+    public static Runnable interruptFakeConsumer = () -> {
+        logger.info("Fake interrupting rcms job");
+
+    };
+
+    public static Supplier<Boolean> fakeIsAvailableSupplier = () -> true;
+
+    public static Function<RecoveryJob, FSMEvent> recoveryJobFakeConsumer = recoveryJob -> {
+
+        logger.debug("Passing the recovery job: " + recoveryJob.toCompactString() + " to fake RCMS controller");
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return FSMEvent.JobCompleted;
+
+    };
+
+    public static Supplier<Boolean> isAvailableSupplier = () -> {
         Boolean recoveryOngoing = srcmsController.isRecoveryOngoing();
         boolean isAvailable = false;
         logger.info(String.format("Checking availability of RCMS, is recovery ongoing: %s ", recoveryOngoing));
-        if(recoveryOngoing != null && !recoveryOngoing){
+        if (recoveryOngoing != null && !recoveryOngoing) {
             isAvailable = true;
         }
         return isAvailable;
