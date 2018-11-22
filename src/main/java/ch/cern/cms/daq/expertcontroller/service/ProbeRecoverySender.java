@@ -28,6 +28,7 @@ public class ProbeRecoverySender {
     public ResponseEntity<RecoveryResponse> issueTTCHardReset() {
 
         RecoveryRequest recoveryRequest1 = generateEmptyRecoveryRequest(1);
+        recoveryRequest1.setIsProbe(true);
         recoveryRequest1.setProblemTitle("Probe problem");
         RecoveryRequestStep step = recoveryRequest1.getRecoveryRequestSteps().iterator().next();
         step.setIssueTTCHardReset(true);
@@ -44,6 +45,7 @@ public class ProbeRecoverySender {
     public ResponseEntity<RecoveryResponse> issueRecovery(String subsystem){
 
         RecoveryRequest recoveryRequest2 = generateEmptyRecoveryRequest(2);
+        recoveryRequest2.setIsProbe(true);
 
         if(subsystem == null){
             recoveryRequest2.setProblemTitle("Probe problem without subsystem");

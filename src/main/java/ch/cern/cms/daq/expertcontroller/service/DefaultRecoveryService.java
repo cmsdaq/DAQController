@@ -8,7 +8,6 @@ import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutorStatus;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
-import lombok.Getter;
 import org.apache.log4j.Logger;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
@@ -87,10 +86,18 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             case "accepted":
                 logger.info("Accepted recovery request: " + request);
                 RecoveryProcedure recoveryProcedure = createRecoveryProcedure(request);
+
+                if (request.getIsProbe() != null) {
+                    recoveryProcedure.setIsProbe(request.getIsProbe());
+                } else {
+                    recoveryProcedure.setIsProbe(false);
+                }
+
                 recoveryProcedureRepository.save(recoveryProcedure);
                 logger.debug("New procedure has been persisted with id " + recoveryProcedure.getId());
                 recoveryProcedureExecutor.start(recoveryProcedure);
                 response.setRecoveryProcedureId(recoveryProcedure.getId());
+
 
                 break;
             case "acceptedWithPreemption":
@@ -288,6 +295,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
             });
 
             recoveryProcedureStatus.setJobStatuses(jobStatuses);
+            recoveryProcedureStatus.setIsProbe(lastExecutedProcedure.getIsProbe());
 
             builder.lastProcedureStatus(recoveryProcedureStatus);
         }
@@ -423,10 +431,10 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
         RecoveryProcedure recoveryProcedure = recoveryProcedureExecutor.getExecutedProcedure();
 
         if (executorStatus.getState() == State.Idle) {
-            if(recoveryProcedureExecutor.isAvailable()) {
+            if (recoveryProcedureExecutor.isAvailable()) {
                 logger.debug("Following request has been accepted: " + request);
                 result = "accepted";
-            } else{
+            } else {
                 result = "rejectedDueToManualRecovery";
             }
         } else {

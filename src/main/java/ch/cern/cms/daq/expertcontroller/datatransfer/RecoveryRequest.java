@@ -31,6 +31,8 @@ public class RecoveryRequest {
 
     private boolean withPostponement;
 
+    private Boolean isProbe;
+
     private List<RecoveryRequestStep> recoveryRequestSteps;
 
     public String toString() {

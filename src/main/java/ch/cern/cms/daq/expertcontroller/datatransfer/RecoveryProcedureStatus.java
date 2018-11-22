@@ -55,4 +55,6 @@ RecoveryProcedureStatus {
      * Related condition ids.
      */
     List<Long> conditionIds;
+
+    Boolean isProbe;
 }

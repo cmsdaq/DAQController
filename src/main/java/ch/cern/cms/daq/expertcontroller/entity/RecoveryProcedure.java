@@ -51,6 +51,7 @@ public class RecoveryProcedure {
     @OrderColumn(name = "list_index")
     private List<Event> eventSummary;
 
+    private Boolean isProbe;
 
     /**
      * Procedure that was created based on first request
