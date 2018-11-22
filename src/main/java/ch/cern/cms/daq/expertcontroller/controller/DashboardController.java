@@ -1,9 +1,7 @@
 package ch.cern.cms.daq.expertcontroller.controller;
 
-import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
-import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
-import ch.cern.cms.daq.expertcontroller.datatransfer.RecoveryStatusDTO;
-import ch.cern.cms.daq.expertcontroller.service.RecoveryService;
+import ch.cern.cms.daq.expertcontroller.datatransfer.*;
+import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -24,7 +22,7 @@ public class DashboardController {
 
 
     @Autowired
-    RecoveryService recoveryService;
+    IRecoveryService recoveryService;
 
     @Autowired
     private SimpMessagingTemplate template;
@@ -33,26 +31,40 @@ public class DashboardController {
      * Called by the dashboard client on approval decision
      *
      * @param approvalResponse data transfer object describing what has been approved
-     * @return status of the recovery that has been approved
+     * @return acceptanceDecision of the recovery that has been approved
      */
     @MessageMapping("/approve")
     @SendTo("/topic/recovery-status")
-    public RecoveryStatusDTO approve(@RequestBody ApprovalResponse approvalResponse) {
+    public RecoveryServiceStatus approve(@RequestBody ApprovalResponse approvalResponse) {
 
         logger.info("Approval request: " + approvalResponse);
-        recoveryService.handleDecision(approvalResponse);
-
-        return recoveryService.getStatus();
-
+        recoveryService.submitApprovalDecision(approvalResponse);
+        return recoveryService.getRecoveryServiceStatus();
     }
 
+    @MessageMapping("/interrupt")
+    @SendTo("/topic/interrupt-status")
+    public InterruptResponse interrupt() {
+        logger.info("Interrupt requested");
+        return recoveryService.interrupt();
+    }
+
+
+    /**
+     * Called by the dashboard client when requests status
+     */
+    @MessageMapping("/status")
+    @SendTo("/topic/recovery-status")
+    public RecoveryServiceStatus getStatus() {
+        return recoveryService.getRecoveryServiceStatus();
+    }
     /**
      * Sends approval request to the dashboard client
      *
      * @param approvalRequest data transfer object describing what needs to be approved
      */
     public void requestApprove(ApprovalRequest approvalRequest) {
-        logger.info("Requesting operator approval of recovery: " + approvalRequest.getRecoveryId());
+        logger.info("Requesting operator approval of recovery: " + approvalRequest.getRecoveryProcedureId());
         this.template.convertAndSend("/topic/approveRequests", approvalRequest);
     }
 
@@ -65,11 +77,11 @@ public class DashboardController {
     /**
      * Sends current recovery status to the dashboard client
      *
-     * @param recoveryStatusDTO data transfer object describing status of current recovery
+     * @param recoveryServiceStatus data transfer object describing status of current recovery
      */
-    public void notifyRecoveryStatus(RecoveryStatusDTO recoveryStatusDTO) {
-        logger.info("Notifying dashboard status changed: " + recoveryStatusDTO);
-        this.template.convertAndSend("/topic/recovery-status", recoveryStatusDTO);
+    public void notifyRecoveryStatus(RecoveryServiceStatus recoveryServiceStatus) {
+        logger.info("Notifying dashboard status changed: " + recoveryServiceStatus);
+        this.template.convertAndSend("/topic/recovery-status", recoveryServiceStatus);
     }
 
 }

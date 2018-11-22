@@ -10,7 +10,7 @@ Dashboard->Controller: Approve request
 
 Controller->+Controller: Start recovery
 
-Controller-->Dashboard: Recovery status update
+Controller-->Dashboard: Recovery acceptanceDecision update
 
 Expert->-Expert: Condition ends
 
@@ -21,7 +21,7 @@ note right of Controller
 end note
 
 
-Controller-->Dashboard: Recovery status update
+Controller-->Dashboard: Recovery acceptanceDecision update
 
 Controller->-Controller: End recovery
 

@@ -1,30 +1,26 @@
 package ch.cern.cms.daq.expertcontroller.datatransfer;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Response to expert. Data transfer object
  */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class RecoveryResponse {
 
     /**
-     * Result of the recovery request, may be accepted or rejected
+     * Result of the recovery request acceptance, may be accepted, rejected etc.
      */
-    private String status;
+    private String acceptanceDecision;
 
     /**
-     * Id of the recovery request that was accepted or rejected
-     */
-    private Long recoveryId;
-
-    /**
-     * Id of the condition that generated recovery
-     */
-    private Long conditionId;
-
-    /**
-     * Id of the recovery procedure
+     * Id of the recovery procedure that was created (unless it was rejected)
      */
     private Long recoveryProcedureId;
 

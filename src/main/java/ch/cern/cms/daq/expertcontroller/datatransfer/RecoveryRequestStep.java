@@ -5,16 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
 import java.util.Set;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RecoveryRequestStepDTO {
+public class RecoveryRequestStep {
 
-    int stepIndex;
+    Integer stepIndex;
 
     String humanReadable;
 
@@ -27,9 +26,5 @@ public class RecoveryRequestStepDTO {
     Set<String> fault;
 
     Set<String> reset;
-
-    Date started;
-
-    Date finished;
 
 }

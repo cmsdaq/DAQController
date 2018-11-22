@@ -15,14 +15,9 @@ public class L0Controller extends FMController {
      * @param senderURI The URI that is to be used as sender URI in requests to the LV0A.
      * @throws LV0AutomatorControlException If the parameter relay could not be created.
      */
-    public L0Controller(String senderURI) throws LV0AutomatorControlException {
+    public L0Controller(String senderURI) throws LV0AutomatorControlException, CommandServiceException {
         super(senderURI);
-
-        try {
-            commandRelayRemote = new CommandRelayRemote();
-        } catch (CommandServiceException e) {
-            e.printStackTrace();
-        }
+        commandRelayRemote = new CommandRelayRemote();
     }
 
     private static CommandBean buildTTCHardResetBean() {
@@ -32,24 +27,15 @@ public class L0Controller extends FMController {
         return commandBean;
     }
 
-    public boolean sendTTCHardReset() throws LV0AutomatorControlException {
+    public void sendTTCHardReset() throws CommandServiceException {
+
+        this.commandRelayRemote.execute(this.URIs, buildTTCHardResetBean(), this.senderURI);
 
         try {
-            this.commandRelayRemote.execute(this.URIs, buildTTCHardResetBean(), this.senderURI);
-
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            return true;
-        } catch (CommandServiceException e) {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
             e.printStackTrace();
-            return false;
         }
-
-
 
 
     }
