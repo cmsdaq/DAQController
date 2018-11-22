@@ -17,7 +17,7 @@ import java.time.OffsetDateTime;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-public class Event {
+public class RecoveryEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)

@@ -1,7 +1,7 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
@@ -62,7 +62,7 @@ public class ExecutorFactory {
     public static IExecutor build(
             Function<RecoveryJob, FSMEvent> approvalConsumer,
             Function<RecoveryJob, FSMEvent> recoveryJobConsumer,
-            BiConsumer<RecoveryProcedure, List<Event>> report,
+            BiConsumer<RecoveryProcedure, List<RecoveryEvent>> report,
             Supplier<FSMEvent> observer,
             Integer approvalTimeout,
             Integer executionTimeout,
@@ -192,7 +192,7 @@ public class ExecutorFactory {
 
     public static Function<RecoveryJob, FSMEvent> recoveryJobFakeConsumer = recoveryJob -> {
 
-        logger.debug("Passing the recovery job: " + recoveryJob.toCompactString() + " to fake RCMS controller");
+        logger.info("Passing the recovery job: " + recoveryJob.toCompactString() + " to fake RCMS controller");
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
@@ -213,7 +213,7 @@ public class ExecutorFactory {
     };
 
 
-    public static BiConsumer<RecoveryProcedure, List<Event>> report = (rp, s) -> {
+    public static BiConsumer<RecoveryProcedure, List<RecoveryEvent>> report = (rp, s) -> {
         logger.info("Reporting the acceptanceDecision: " + s);
         rp.setEventSummary(s);
     };

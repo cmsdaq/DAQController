@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
@@ -12,7 +12,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class TestExecutorFactory extends ExecutorFactory {
 
@@ -127,7 +126,7 @@ public class TestExecutorFactory extends ExecutorFactory {
         }
     };
 
-    public static BiConsumer<RecoveryProcedure, List<Event>> report = (rp, s) -> {
+    public static BiConsumer<RecoveryProcedure, List<RecoveryEvent>> report = (rp, s) -> {
         logger.info("Reporting the acceptanceDecision: " + s);
         rp.setEventSummary(s);
     };

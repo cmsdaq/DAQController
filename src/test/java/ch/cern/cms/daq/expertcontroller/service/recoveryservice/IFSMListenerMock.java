@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
@@ -145,7 +145,7 @@ class IFSMListenerMock implements IFSMListener {
     }
 
     @Override
-    public List<Event> getSummary() {
+    public List<RecoveryEvent> getSummary() {
         return null;
     }
 }

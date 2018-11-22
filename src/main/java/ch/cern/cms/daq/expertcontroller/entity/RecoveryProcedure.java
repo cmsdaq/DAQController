@@ -49,7 +49,7 @@ public class RecoveryProcedure {
     @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "recovery_procedure_id")
     @OrderColumn(name = "list_index")
-    private List<Event> eventSummary;
+    private List<RecoveryEvent> eventSummary;
 
     private Boolean isProbe;
 

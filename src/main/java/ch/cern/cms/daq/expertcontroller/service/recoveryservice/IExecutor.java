@@ -1,7 +1,7 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
@@ -21,7 +21,7 @@ public interface IExecutor {
      * @param recoveryJob
      * @return summary of actions performed in recovery
      */
-    List<Event> start(RecoveryProcedure recoveryJob);
+    List<RecoveryEvent> start(RecoveryProcedure recoveryJob);
 
 
     /**
@@ -31,7 +31,7 @@ public interface IExecutor {
      * @param wait        flag indicating whether the request should be executed synchronously
      * @return summary of actions performed in recovery
      */
-    List<Event> start(RecoveryProcedure recoveryJob, boolean wait);
+    List<RecoveryEvent> start(RecoveryProcedure recoveryJob, boolean wait);
 
     /**
      * Approve given recovery step
@@ -99,7 +99,7 @@ public interface IExecutor {
      * @param recoveryProcedure recovery procedure in context of which status is reported
      * @param report            current recovery procedure acceptanceDecision
      */
-    void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<Event> report);
+    void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<RecoveryEvent> report);
 
     FSMEvent forceSelectJob(int stepIndex);
 

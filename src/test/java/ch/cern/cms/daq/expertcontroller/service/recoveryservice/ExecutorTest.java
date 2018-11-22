@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.*;
@@ -32,7 +32,7 @@ public class ExecutorTest {
 
         List<RecoveryJob> list = new ArrayList<>();
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<Event> result = executor.start(job, true);
+        List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Procedure starts", "Next job not found, recovery failed"),
                             result.stream().map(c -> c.getContent()).collect(Collectors.toList()));
@@ -45,7 +45,7 @@ public class ExecutorTest {
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("J1").build());
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<Event> result = executor.start(job, true);
+        List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Procedure starts",
                                           "Job J1 accepted",
@@ -62,7 +62,7 @@ public class ExecutorTest {
                 RecoveryJob.builder().job("J1").build(),
                 RecoveryJob.builder().job("J2").build());
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<Event> result = executor.start(job, true);
+        List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
 
         Assert.assertEquals(Arrays.asList("Procedure starts",
@@ -82,7 +82,7 @@ public class ExecutorTest {
         List<RecoveryJob> list = new ArrayList<>();
         list.add(RecoveryJob.builder().job("VLJ").build());
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<Event> result = executor.start(job, true);
+        List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList("Procedure starts",
                                           "Job VLJ accepted",
@@ -99,7 +99,7 @@ public class ExecutorTest {
 
         (new Thread() {
             public void run() {
-                List<Event> result = executor.start(job, true);
+                List<RecoveryEvent> result = executor.start(job, true);
             }
         }).start();
 
@@ -122,7 +122,7 @@ public class ExecutorTest {
         list.add(RecoveryJob.builder().job("J1").build());
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
 
-        List<Event> result = executor.start(job, true);
+        List<RecoveryEvent> result = executor.start(job, true);
 
         Assert.assertEquals(State.Idle, fsm.getState());
         Assert.assertEquals(Arrays.asList(
@@ -214,7 +214,7 @@ public class ExecutorTest {
                         .build()
         );
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<Event> result = executor.start(job, true);
+        List<RecoveryEvent> result = executor.start(job, true);
         Assert.assertEquals(State.Idle, fsm.getState());
 
         Assert.assertEquals(Arrays.asList("Procedure starts",
@@ -239,7 +239,7 @@ public class ExecutorTest {
                         .build()
         );
         RecoveryProcedure job = RecoveryProcedure.builder().procedure(list).build();
-        List<Event> result = executor.start(job, true);
+        List<RecoveryEvent> result = executor.start(job, true);
 
         Assert.assertEquals(State.Idle, fsm.getState());
 
@@ -368,7 +368,7 @@ public class ExecutorTest {
         }
     };
 
-    BiConsumer<RecoveryProcedure, List<Event>> report = (rp, s) ->
+    BiConsumer<RecoveryProcedure, List<RecoveryEvent>> report = (rp, s) ->
             logger.info("Reporting the acceptanceDecision: " + s);
 
 }

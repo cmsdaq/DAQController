@@ -1,6 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm;
 
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
@@ -32,7 +32,7 @@ public class FSMListener implements IFSMListener {
     @Setter
     private RecoveryJob currentJob;
 
-    List<Event> reportSteps;
+    List<RecoveryEvent> reportSteps;
 
     private Consumer<RecoveryProcedure> persistResultsConsumer;
 
@@ -44,7 +44,7 @@ public class FSMListener implements IFSMListener {
         this.executor = executor;
     }
 
-    public List<Event> getSummary() {
+    public List<RecoveryEvent> getSummary() {
         return reportSteps;
     }
 
@@ -87,7 +87,7 @@ public class FSMListener implements IFSMListener {
 
         OffsetDateTime startTime = OffsetDateTime.now();
 
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Procedure starts")
                                 .date(startTime)
                                 .type("processing")
@@ -104,7 +104,7 @@ public class FSMListener implements IFSMListener {
     public FSMEvent onJobAccepted() {
         logger.info("Job accepted. Passing to job consumer");
 
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Job " + currentJob.getJob() + " accepted")
                                 .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
@@ -135,7 +135,7 @@ public class FSMListener implements IFSMListener {
     public FSMEvent onOtherJobAccepted() {
         logger.info("Force selected job " + currentJob.getJob() + " accepted");
 
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Force selected job " + currentJob.getJob() + " accepted")
                                 .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
@@ -154,7 +154,7 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onJobCompleted() {
 
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Job " + currentJob.getJob() + " completed")
                                 .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
@@ -173,7 +173,7 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onJobNoEffect() {
 
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Job " + currentJob.getJob() + " didn't fix the problem")
                                 .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
@@ -187,7 +187,7 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onRecoveryFailed() {
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Recovery procedure failed")
                                 .date(OffsetDateTime.now())
                                 .type("processing")
@@ -213,7 +213,7 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onNextJobNotFound() {
         logger.info("Next job not found");
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Next job not found, recovery failed")
                                 .date(OffsetDateTime.now())
                                 .type("processing")
@@ -235,7 +235,7 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onTimeout() {
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Job: " + currentJob.getJob() + " times out")
                                 .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
@@ -248,7 +248,7 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onException() {
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Recovery procedure finished with exception")
                                 .date(OffsetDateTime.now())
                                 .type("exception")
@@ -268,7 +268,7 @@ public class FSMListener implements IFSMListener {
         currentJob.setEnd(OffsetDateTime.now());
         currentJob.setStatus(State.Failed.toString());
 
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Job " + currentJob.getJob() + " finished with exception")
                                 .stepIndex(currentJob.getStepIndex())
                                 .date(OffsetDateTime.now())
@@ -283,7 +283,7 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onFinished() {
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Recovery procedure completed successfully")
                                 .date(OffsetDateTime.now())
                                 .type("finish")
@@ -295,7 +295,7 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onInterrupted() {
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Recovery procedure has been interrupted")
                                 .date(OffsetDateTime.now())
                                 .type("interrupt")
@@ -312,7 +312,7 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onCancelled() {
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Recovery procedure has been cancelled")
                                 .date(OffsetDateTime.now())
                                 .type("cancellation")
@@ -324,7 +324,7 @@ public class FSMListener implements IFSMListener {
 
     @Override
     public FSMEvent onApprovedJobNotExist() {
-        reportSteps.add(Event.builder()
+        reportSteps.add(RecoveryEvent.builder()
                                 .content("Force selected job doesn't exist")
                                 .date(OffsetDateTime.now())
                                 .type("exception")

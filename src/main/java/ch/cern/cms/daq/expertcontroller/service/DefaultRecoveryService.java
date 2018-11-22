@@ -2,6 +2,7 @@ package ch.cern.cms.daq.expertcontroller.service;
 
 import ch.cern.cms.daq.expertcontroller.controller.DashboardController;
 import ch.cern.cms.daq.expertcontroller.datatransfer.*;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
@@ -227,7 +228,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
 
         // Following parameters will be handled differently depending on status of the executor
-        List<ch.cern.cms.daq.expertcontroller.entity.Event> actionSummary = null;
+        List<RecoveryEvent> actionSummary = null;
         String finalStatus = null;
         boolean existLastProcedure = false;
 

@@ -1,7 +1,7 @@
 package ch.cern.cms.daq.expertcontroller.service.recoveryservice;
 
 import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalResponse;
-import ch.cern.cms.daq.expertcontroller.entity.Event;
+import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSM;
@@ -58,7 +58,7 @@ public class Executor implements IExecutor {
     /**
      * Consumer of recovery report. Called when recovery procedure is finished or is updated.
      */
-    protected BiConsumer<RecoveryProcedure, List<Event>> statusReportConsumer;
+    protected BiConsumer<RecoveryProcedure, List<RecoveryEvent>> statusReportConsumer;
 
     protected Runnable interruptConsumer;
 
@@ -96,12 +96,12 @@ public class Executor implements IExecutor {
     private boolean forceAccept;
 
     @Override
-    public List<Event> start(RecoveryProcedure recoveryProcedure) {
+    public List<RecoveryEvent> start(RecoveryProcedure recoveryProcedure) {
         return start(recoveryProcedure, false);
     }
 
     @Override
-    public List<Event> start(RecoveryProcedure recoveryProcedure, boolean wait) {
+    public List<RecoveryEvent> start(RecoveryProcedure recoveryProcedure, boolean wait) {
         executedProcedure = recoveryProcedure;
         executedProcedure.getProcedure().stream().forEach(j->j.setProcedureId(executedProcedure.getId()));
 
@@ -231,7 +231,7 @@ public class Executor implements IExecutor {
     @Override
     public ExecutorStatus getStatus() {
         State currentState = fsm.getState();
-        List<Event> actionSummary = listener.getSummary();
+        List<RecoveryEvent> actionSummary = listener.getSummary();
         return ExecutorStatus.builder().actionSummary(actionSummary).state(currentState).build();
     }
 
@@ -319,7 +319,7 @@ public class Executor implements IExecutor {
     }
 
     @Override
-    public void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<Event> report) {
+    public void callStatusReportConsumer(RecoveryProcedure recoveryProcedure, List<RecoveryEvent> report) {
         recoveryProcedure.setEnd(OffsetDateTime.now());
         statusReportConsumer.accept(recoveryProcedure, report);
     }
