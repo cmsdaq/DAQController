@@ -16,6 +16,7 @@ import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.IFSMListener
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import rcms.fm.fw.service.command.CommandServiceException;
 
@@ -45,11 +46,16 @@ public class ExecutorFactory {
     @Autowired
     IExecutor executor;
 
+    @Value("${observe.period}")
+    private Integer observePeriod;
+
     protected static RcmsController srcmsController;
     protected static RecoveryProcedureRepository srecoveryProcedureRepository;
     protected static RecoveryJobRepository srecoveryJobRepository;
     protected static IRecoveryService srecoveryService;
     protected static IExecutor sexecutor;
+    static private Integer sobservePeriod;
+
 
 
     @PostConstruct
@@ -59,6 +65,9 @@ public class ExecutorFactory {
         ExecutorFactory.srecoveryJobRepository = recoveryJobRepository;
         ExecutorFactory.srecoveryService = recoveryService;
         ExecutorFactory.sexecutor = executor;
+        ExecutorFactory.sobservePeriod = observePeriod;
+
+        logger.info(String.format("Observe period is %s ms",sobservePeriod));
 
         rcmsController.setRcmsStatusConsumer(rcmsStatusChangeConsumer);
     }
@@ -145,7 +154,7 @@ public class ExecutorFactory {
 
     public static Supplier<FSMEvent> fixedDelayObserver = () -> {
 
-        logger.info("Observing the system");
+        logger.info("Observing the system for " + sobservePeriod + " ms");
 //        try {
 //            Thread.sleep(1000);
 //        } catch (InterruptedException e) {
@@ -157,7 +166,7 @@ public class ExecutorFactory {
 //        }
 
         try {
-            Thread.sleep(10000);
+            Thread.sleep(sobservePeriod);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
