@@ -93,7 +93,7 @@ public class ExpertController {
      *
      * @return confirmation message
      */
-    @RequestMapping(value = "/fire-ttchr", method = RequestMethod.GET)
+    @RequestMapping(value = "/fire-ttchr", method = RequestMethod.POST)
     public ResponseEntity<RecoveryResponse> testTTCHR() {
         logger.info("Issuing test TTC hard reset");
         return probeRecoverySender.issueTTCHardReset();
@@ -105,8 +105,8 @@ public class ExpertController {
      * @param subsystem subsystem to which test recovery will be applied
      * @return confirmation message
      */
-    @RequestMapping(value = "/fire-recovery", method = RequestMethod.GET)
-    public ResponseEntity<RecoveryResponse> testRecovery(@RequestParam(value = "subsystem") String subsystem) {
+    @RequestMapping(value = "/fire-recovery", method = RequestMethod.POST)
+    public ResponseEntity<RecoveryResponse> testRecovery(@RequestBody String subsystem) {
         logger.info("Issuing test recovery");
         return probeRecoverySender.issueRecovery(subsystem);
     }
