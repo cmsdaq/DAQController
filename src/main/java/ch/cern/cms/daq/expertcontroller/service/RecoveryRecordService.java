@@ -32,7 +32,7 @@ public class RecoveryRecordService {
         procedures.stream().forEach(p -> {
 
             RecoveryRecord procedureRecord = RecoveryRecord.builder()
-                    .id(p.getId())
+                    .id("p-" + p.getId())
                     .start(p.getStart())
                     .end(p.getEnd())
                     .name("Recovery procedure #" + p.getId())
@@ -41,7 +41,7 @@ public class RecoveryRecordService {
 
             List<RecoveryRecord> jobRecords = p.getExecutedJobs().stream()
                     .map(j -> RecoveryRecord.builder()
-                            .id(j.getId())
+                            .id("j-" + j.getId())
                             .start(j.getStart())
                             .end(j.getEnd())
                             .name("Job #" + j.getId())

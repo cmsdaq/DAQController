@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 @Builder
 public class RecoveryRecord {
 
-    Long id;
+    String id;
     String name;
     String description;
     OffsetDateTime start;
