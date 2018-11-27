@@ -9,6 +9,7 @@ import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
 import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
+import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutionMode;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.TestExecutorFactory;
 import io.restassured.RestAssured;
@@ -107,7 +108,35 @@ public class ExpertControllerApplicationTests {
 
         Assert.assertEquals(0, recoveryProcedureRepository.findAll().size());
 
+        // verify is in approval driven execution mode
+        given().header(jsonHeader)
+                .get("/automation").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        equalTo(ExecutionMode.ApprovalDriven.toString())
+                );
+
+        // 5. Assert status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "executorState", equalTo("Idle")
+                );
+
+    }
+
+    @After
+    public void tearDown(){
         given().header(jsonHeader).get("/interrupt").then().assertThat().statusCode(equalTo(HttpStatus.OK.value()));
+
+
+        // change mode: to approvaldriven
+        given().header(jsonHeader).body(false).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()));
+
 
     }
 
@@ -285,7 +314,7 @@ public class ExpertControllerApplicationTests {
         given().header(jsonHeader).body(101L).post("/finished").then().assertThat()
                 .statusCode(equalTo(HttpStatus.OK.value()));
 
-        Thread.sleep(2500);
+        Thread.sleep(3000);
 
         System.out.println("Checking final status");
 
@@ -334,6 +363,7 @@ public class ExpertControllerApplicationTests {
                         "recoveryProcedureId", equalTo(1));
 
 
+        Thread.sleep(500);
         ApprovalResponse approvalResponse = generateApprovalResponse(1L, 0);
         stompSession.send(SEND_APPROVE, approvalResponse);
 
@@ -397,8 +427,6 @@ public class ExpertControllerApplicationTests {
         stompSession.send(SEND_APPROVE, approvalResponse2);
 
 
-
-
         // Finished signal was sent during recovering state - it will be delayed until observe period
         Thread.sleep(TestExecutorFactory.recoveringTime);
 
@@ -406,7 +434,7 @@ public class ExpertControllerApplicationTests {
                 .statusCode(equalTo(HttpStatus.OK.value()));
 
         // Delay of the finish signal is 1s, wait 2x worst case (so that transition goes completed->Idle
-        Thread.sleep(2* 1000);
+        Thread.sleep(2 * 1000);
 
 
         // 8. Assert status of the service after 2nd job
@@ -421,14 +449,14 @@ public class ExpertControllerApplicationTests {
                                 Arrays.asList(
                                         "Procedure starts",
                                         "Job J1 accepted",
-                                        "Job J1 completed" ,
+                                        "Job J1 completed",
                                         "Procedure continues, received signal problem is not fixed",
                                         "Job J1 didn't fix the problem",
                                         "Job J2 accepted",
                                         "Job J2 completed",
                                         "Recovery procedure completed successfully"))
 
-                        );
+                );
 
 
     }
@@ -572,12 +600,161 @@ public class ExpertControllerApplicationTests {
     }
 
 
+    @Test
+    public void changingAutomationMode() {
+
+
+        // 1. check automation mode
+        given().header(jsonHeader)
+                .get("/automation").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        equalTo(ExecutionMode.ApprovalDriven.toString())
+                );
+
+        // 2. change mode: to automation
+        given().header(jsonHeader).body(true).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(equalTo("Automation has been enabled"));
+
+        // 3. check again
+        given().header(jsonHeader)
+                .get("/automation").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        equalTo(ExecutionMode.Automated.toString())
+                );
+
+        // 4. change mode: ignored
+        given().header(jsonHeader).body(true).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(equalTo("Automation is already enabled"));
+
+        // 5. change mode: back to manual
+        given().header(jsonHeader).body(false).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(equalTo("Automation has been disabled"));
+
+        // 6. check again
+        given().header(jsonHeader)
+                .get("/automation").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        equalTo(ExecutionMode.ApprovalDriven.toString())
+                );
+    }
+
+    @Test
+    public void isAutomatedFlagInRequests() throws InterruptedException {
+
+
+        // 1. change mode: to automation
+        given().header(jsonHeader).body(true).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(equalTo("Automation has been enabled"));
+
+        // 2. build request
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .isAutomatedRecoveryEnabled(true)
+                .recoveryRequestSteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .stepIndex(0)
+                                .build()))
+                .build();
+
+        // 3. send request, assert that it's accepted
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "acceptanceDecision", equalTo("accepted"),
+                        "recoveryProcedureId", equalTo(1));
+
+        Thread.sleep(3500);
+
+        // 4. Assert status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "executorState", equalTo("Idle"),
+                        "lastProcedureStatus.actionSummary.content", equalTo(
+                                Arrays.asList(
+                                        "Procedure starts",
+                                        "Job J1 accepted",
+                                        "Job J1 completed",
+                                        "Job J1 didn't fix the problem",
+                                        "Next job not found, recovery failed"))
+                );
+
+
+        // 5. change mode: to manual
+        given().header(jsonHeader).body(false).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(equalTo("Automation has been disabled"));
+
+    }
+
+    @Test
+    public void isAutomatedButRequestDoesntAllowAutomationTest() throws InterruptedException {
+
+
+        // 1. change mode: to automation
+        given().header(jsonHeader).body(true).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(equalTo("Automation has been enabled"));
+
+        // 2. build request
+        RecoveryRequest r = RecoveryRequest.builder()
+                .problemId(101L)
+                .isAutomatedRecoveryEnabled(false)
+                .recoveryRequestSteps(Arrays.asList(
+                        RecoveryRequestStep.builder()
+                                .humanReadable("J1")
+                                .stepIndex(0)
+                                .build()))
+                .build();
+
+        // 3. send request, assert that it's accepted
+        given().header(jsonHeader).body(r).post("/recover").then().assertThat()
+                .statusCode(equalTo(HttpStatus.CREATED.value()))
+                .body(
+                        "acceptanceDecision", equalTo("accepted"),
+                        "recoveryProcedureId", equalTo(1));
+
+        Thread.sleep(3000);
+
+        // 4. Assert status of the service
+        given().header(jsonHeader)
+                .get("/service-status").then()
+                .assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(
+                        "executorState", equalTo("AwaitingApproval"),
+                        "lastProcedureStatus.actionSummary.content", equalTo(
+                                Arrays.asList(
+                                        "Procedure starts"))
+                );
+
+
+        // 5. change mode: to manual
+        given().header(jsonHeader).body(false).post("/automation").then().assertThat()
+                .statusCode(equalTo(HttpStatus.OK.value()))
+                .body(equalTo("Automation has been disabled"));
+
+    }
     /**
      * 1st condition, the important one, finishes after recovery, during observe period comes 2nd condition, the less
      * important one, and it waits until observe period ends
      */
     @Test
     public void lessImportantConditionWaitsUntilObservePeriodEnds() {
+
 
     }
 

@@ -5,6 +5,7 @@ import ch.cern.cms.daq.expertcontroller.controller.DashboardController;
 import ch.cern.cms.daq.expertcontroller.datatransfer.*;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
+import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutionMode;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.TestExecutorFactory;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSMEvent;
@@ -213,6 +214,8 @@ class MockServicesProvider {
     public IExecutor executorService() {
         IExecutor executor = TestExecutorFactory.build(
                 TestExecutorFactory.approvalConsumerThatNeverAccepts,
+                null,
+                ExecutionMode.ApprovalDriven,
                 recoveryJob -> {
                     logger.info("Recovery job executing");
 

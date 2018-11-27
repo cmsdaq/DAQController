@@ -174,4 +174,26 @@ public class ExpertController {
         return "Controller up and running: " + message;
     }
 
+    /**
+     * Endpont to get current automation status
+     *
+     * @return current automation status
+     */
+    @RequestMapping(value = "/automation", method = RequestMethod.GET)
+    public String getAutomationMode() {
+        return recoveryService.automationStatus();
+    }
+
+    /**
+     * Endpont to get current automation status
+     *
+     * @return current automation status
+     */
+    @RequestMapping(value = "/automation", method = RequestMethod.POST)
+    public String setAutomationMode(@RequestBody boolean enabled) {
+        logger.info("Request to change automatio mode: " + enabled);
+        return recoveryService.enableAutomation(enabled);
+    }
+
+
 }

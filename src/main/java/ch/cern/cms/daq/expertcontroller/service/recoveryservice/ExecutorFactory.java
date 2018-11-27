@@ -75,7 +75,9 @@ public class ExecutorFactory {
     private static Logger logger = LoggerFactory.getLogger(ExecutorFactory.class);
 
     public static IExecutor build(
-            Function<RecoveryJob, FSMEvent> approvalConsumer,
+            Function<RecoveryJob, FSMEvent> manualJobApprovalConsumer,
+            Function<RecoveryJob, FSMEvent> automaticJobApprovalConsumer,
+            ExecutionMode mode,
             Function<RecoveryJob, FSMEvent> recoveryJobConsumer,
             BiConsumer<RecoveryProcedure, List<RecoveryEvent>> report,
             Supplier<FSMEvent> observer,
@@ -97,7 +99,9 @@ public class ExecutorFactory {
                 .fsm(fsm)
                 .listener(listener)
                 .executorService(Executors.newFixedThreadPool(1))
-                .jobApprovalConsumer(approvalConsumer)
+                .manualJobApprovalConsumer(manualJobApprovalConsumer)
+                .automatedApprovalConsumer(automaticJobApprovalConsumer)
+                .executionMode(mode)
                 .jobConsumer(recoveryJobConsumer)
                 .statusReportConsumer(report)
                 .observationConsumer(observer)
@@ -114,6 +118,7 @@ public class ExecutorFactory {
 
     public static Function<RecoveryJob, FSMEvent> automaticApprovalConsumer = recoveryJob -> {
 
+        logger.info("Automatic approval consumer will approve after 1s");
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -132,6 +137,8 @@ public class ExecutorFactory {
                 .build();
 
         srecoveryService.onApprovalRequest(approvalRequest);
+
+        //TODO: change it to using automatic approval consumer
         if (sexecutor.isForceAccept()) {
             return FSMEvent.JobAccepted;
         }
@@ -242,10 +249,12 @@ public class ExecutorFactory {
 
     public static IExecutor DEFAULT_EXECUTOR = build(
             manualApprovalConsumer,
+            automaticApprovalConsumer,
+            ExecutionMode.ApprovalDriven,
             recoveryJobConsumer,
             report,
             fixedDelayObserver,
-            1200, //TODO: investigate, never timeouts
+            3600 , //TODO: 1h of timeout
             600,
             persistResultsConsumer,
             onProcedureUpdateConsumer,
@@ -256,6 +265,8 @@ public class ExecutorFactory {
 
     public static IExecutor FAKE_EXECUTOR = build(
             manualApprovalConsumer,
+            automaticApprovalConsumer,
+            ExecutionMode.ApprovalDriven,
             recoveryJobFakeConsumer,
             report,
             fixedDelayObserver,

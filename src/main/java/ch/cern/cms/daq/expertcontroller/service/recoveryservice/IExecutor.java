@@ -118,4 +118,9 @@ public interface IExecutor {
     boolean isAvailable();
 
     void rcmsStatusUpdate(String status);
+
+    void setExecutionMode(ExecutionMode mode);
+
+    ExecutionMode getExecutionMode();
+
 }

@@ -33,6 +33,8 @@ public class RecoveryRequest {
 
     private Boolean isProbe;
 
+    private boolean isAutomatedRecoveryEnabled;
+
     private List<RecoveryRequestStep> recoveryRequestSteps;
 
     public String toString() {

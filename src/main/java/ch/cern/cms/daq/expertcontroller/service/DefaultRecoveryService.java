@@ -6,6 +6,7 @@ import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
+import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutionMode;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutorStatus;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.IExecutor;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.State;
@@ -384,6 +385,12 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
      * @param recoveryRequest recovery request that will bee a base for cration of Recovery procedure
      */
     private RecoveryProcedure createRecoveryProcedure(RecoveryRequest recoveryRequest) {
+
+        ExecutionMode procedureExecutionMode = ExecutionMode.ApprovalDriven;
+        if(recoveryRequest.isAutomatedRecoveryEnabled())
+            procedureExecutionMode = ExecutionMode.Automated;
+
+
         RecoveryProcedure recoveryProcedure =
                 RecoveryProcedure.builder().
                         procedure(recoveryRequest.getRecoveryRequestSteps().stream()
@@ -399,6 +406,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                                           .collect(Collectors.toList()))
                         .problemTitle(recoveryRequest.getProblemTitle())
                         .executedJobs(new ArrayList<>())
+                        .executionMode(procedureExecutionMode)
                         .problemIds(new ArrayList<>(Arrays.asList(recoveryRequest.getProblemId())))
                         .build();
 
@@ -540,5 +548,28 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                     .status("ignored")
                     .message("Executor is in idle state, ignoring interrupt signal").build();
         }
+    }
+
+    @Override
+    public String enableAutomation(boolean enabled) {
+        if (enabled) {
+            if (recoveryProcedureExecutor.getExecutionMode() == ExecutionMode.Automated) {
+                return "Automation is already enabled";
+            }
+            recoveryProcedureExecutor.setExecutionMode(ExecutionMode.Automated);
+            return "Automation has been enabled";
+        } else {
+
+            if (recoveryProcedureExecutor.getExecutionMode() == ExecutionMode.ApprovalDriven) {
+                return "Automation is already disabled";
+            }
+            recoveryProcedureExecutor.setExecutionMode(ExecutionMode.ApprovalDriven);
+            return "Automation has been disabled";
+        }
+    }
+
+    @Override
+    public String automationStatus(){
+        return recoveryProcedureExecutor.getExecutionMode().toString();
     }
 }

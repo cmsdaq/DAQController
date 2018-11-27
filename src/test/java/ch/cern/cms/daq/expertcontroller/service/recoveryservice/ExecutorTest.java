@@ -266,7 +266,7 @@ public class ExecutorTest {
                 .fsm(fsm)
                 .listener(listener)
                 .executorService(Executors.newFixedThreadPool(1))
-                .jobApprovalConsumer(approvalConsumer)
+                .manualJobApprovalConsumer(approvalConsumer)
                 .jobConsumer(recoveryJobConsumer)
                 .statusReportConsumer(report)
                 .observationConsumer(observer)

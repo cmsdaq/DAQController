@@ -1,5 +1,6 @@
 package ch.cern.cms.daq.expertcontroller.entity;
 
+import ch.cern.cms.daq.expertcontroller.service.recoveryservice.ExecutionMode;
 import lombok.*;
 
 import javax.persistence.*;
@@ -66,6 +67,12 @@ public class RecoveryProcedure {
 
     @Transient
     private RecoveryJob nextStep;
+
+
+    //TODO: enable persistence for that at some point
+    @Transient
+    private ExecutionMode executionMode;
+
 
     public RecoveryJob outOfSequenceJob(int index){
 

@@ -148,6 +148,8 @@ public class TestExecutorFactory extends ExecutorFactory {
 
     public static IExecutor TEST_EXECUTOR = build(
             approvalConsumerThatNeverAccepts,
+            null,
+            ExecutionMode.ApprovalDriven,
             recoveryJobConsumerThatCompletesImmediately,
             report, observerThatTimeoutsImmediately,
             1,
@@ -160,10 +162,12 @@ public class TestExecutorFactory extends ExecutorFactory {
 
     public static IExecutor INTEGRATION_TEST_EXECUTOR = build(
             approvalConsumerThatNeverAccepts,
+            automaticApprovalConsumer,
+            ExecutionMode.ApprovalDriven,
             fixedTimeRecoveryJobConsumer,
             report,
             fixedDelayObserver,
-            1,
+            2,
             recoveringTime * 2,
             persistResultsConsumer,
             printOnUpdateConsumer,

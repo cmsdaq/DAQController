@@ -65,5 +65,8 @@ public interface IRecoveryService {
     @PreDestroy
     void shutdown();
 
+    String enableAutomation(boolean enabled);
+
+    String automationStatus();
 
 }

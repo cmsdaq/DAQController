@@ -45,10 +45,18 @@ public class Executor implements IExecutor {
      */
     protected Function<RecoveryJob, FSMEvent> jobConsumer;
 
+    protected Function<RecoveryJob, FSMEvent> automatedApprovalConsumer;
+
     /**
      * Consumer of the approval request. Called when job needs approval.
      */
-    protected Function<RecoveryJob, FSMEvent> jobApprovalConsumer;
+    protected Function<RecoveryJob, FSMEvent> manualJobApprovalConsumer;
+
+    @Setter
+    @Getter
+    protected ExecutionMode executionMode;
+
+    protected ExecutionMode executionModeForProcedure;
 
     /**
      * Consumer of system observation. Called when system needs to be observed.
@@ -92,7 +100,8 @@ public class Executor implements IExecutor {
      */
     private Future<FSMEvent> future;
 
-    @Getter @Setter
+    @Getter
+    @Setter
     private boolean forceAccept;
 
     @Override
@@ -103,7 +112,12 @@ public class Executor implements IExecutor {
     @Override
     public List<RecoveryEvent> start(RecoveryProcedure recoveryProcedure, boolean wait) {
         executedProcedure = recoveryProcedure;
-        executedProcedure.getProcedure().stream().forEach(j->j.setProcedureId(executedProcedure.getId()));
+
+        executionModeForProcedure = recoveryProcedure.getExecutionMode();
+        if (executionModeForProcedure == null)
+            executionModeForProcedure = ExecutionMode.ApprovalDriven; // default execution mode if not specified
+
+        executedProcedure.getProcedure().stream().forEach(j -> j.setProcedureId(executedProcedure.getId()));
 
         listener.setCurrentProcedure(recoveryProcedure);
         Thread thread = new Thread(() -> fsm.transition(FSMEvent.RecoveryStarts));
@@ -145,17 +159,17 @@ public class Executor implements IExecutor {
         Integer defaultStepIndex = listener.getCurrentJob().getStepIndex();
 
         /* Procedure specific approval */
-        if(approvalResponse.getProcedureContext() != null && approvalResponse.getProcedureContext()){
+        if (approvalResponse.getProcedureContext() != null && approvalResponse.getProcedureContext()) {
             logger.info("Whole recovery will be now executed");
 
             boolean defaultProcedureContext =
                     defaultProcedureId.equals(approvalResponse.getRecoveryProcedureId());
 
-            if(defaultProcedureContext){
+            if (defaultProcedureContext) {
                 logger.info("Accept all jobs in the procedure");
                 fsm.transition(FSMEvent.ProcedureAccepted);
 
-            } else{
+            } else {
                 logger.info(
                         "Approval response is in context of procedure that is not currently executed: " +
                                 defaultProcedureId + " vs " + approvalResponse.getRecoveryProcedureId());
@@ -204,9 +218,9 @@ public class Executor implements IExecutor {
         }
     }
 
-    public FSMEvent forceSelectJob(int stepIndex){
+    public FSMEvent forceSelectJob(int stepIndex) {
         RecoveryJob recoveryJob = executedProcedure.outOfSequenceJob(stepIndex);
-        if(recoveryJob == null){
+        if (recoveryJob == null) {
             listener.onApprovedJobNotExist();
             // TODO: perhaps throw exception so that this information is passed to client
             return null;
@@ -257,12 +271,33 @@ public class Executor implements IExecutor {
     @Override
     public FSMEvent callApprovalRequestConsumer(RecoveryJob recoveryJob) {
 
-        future = executorService.submit(() -> jobApprovalConsumer.apply(recoveryJob));
+
+        logger.warn(String.format("Executor consuming job approval in %s execution mode, procedure is %s",
+                                  executionMode, executionModeForProcedure));
+
+        if (executionMode == ExecutionMode.ApprovalDriven ||
+                executionModeForProcedure == ExecutionMode.ApprovalDriven) {
+            logger.info("Passing to manual approval consumer");
+            future = executorService.submit(() -> manualJobApprovalConsumer.apply(recoveryJob));
+        } else if (
+                executionMode == ExecutionMode.Automated
+                        && executionModeForProcedure == ExecutionMode.Automated
+                        && automatedApprovalConsumer != null
+                ) {
+            logger.info("Passing to automated approval consumer");
+            future = executorService.submit(() -> automatedApprovalConsumer.apply(recoveryJob));
+        } else {
+            logger.warn("Problem with executor mode: using the most safe: approval driven");
+            future = executorService.submit(() -> manualJobApprovalConsumer.apply(recoveryJob));
+        }
+
         try {
             return future.get(approvalTimeout, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             return FSMEvent.Interrupt;
         } catch (ExecutionException e) {
+            logger.warn("Execution exception: " + e);
+            e.printStackTrace();
             return FSMEvent.Exception;
         } catch (TimeoutException e) {
             return FSMEvent.Timeout;
@@ -345,7 +380,6 @@ public class Executor implements IExecutor {
     @Override
     public void rcmsStatusUpdate(String status) {
         listener.onNewRcmsStatus(status);
-
     }
 
 }
