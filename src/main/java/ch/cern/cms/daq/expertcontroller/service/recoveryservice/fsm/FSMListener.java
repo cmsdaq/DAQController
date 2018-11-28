@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -32,7 +33,7 @@ public class FSMListener implements IFSMListener {
     @Setter
     private RecoveryJob currentJob;
 
-    List<RecoveryEvent> reportSteps;
+    private List<RecoveryEvent> reportSteps;
 
     private Consumer<RecoveryProcedure> persistResultsConsumer;
 
@@ -51,6 +52,12 @@ public class FSMListener implements IFSMListener {
     @Override
     public void setCurrentProcedure(RecoveryProcedure currentProcedure) {
         this.currentProcedure = currentProcedure;
+
+        /* Must me synchronized because it's accessed by other threads on status requests */
+        reportSteps = Collections.synchronizedList(new ArrayList<>());
+
+        this.currentProcedure.setEventSummary(reportSteps);
+
     }
 
     private FSMEvent selectNextJob() {
@@ -76,7 +83,6 @@ public class FSMListener implements IFSMListener {
     @Override
     public FSMEvent onStart() {
 
-        reportSteps = new ArrayList<>();
         logger.info("Recovery of current procedure "
                             + currentProcedure.getId() + ":"
                             + currentProcedure.getProblemTitle() + " starts");
@@ -352,6 +358,17 @@ public class FSMListener implements IFSMListener {
 
     }
 
+    @Override
+    public void onRecoveryLoopBreak() {
+        logger.info("Reporting loop detection");
+        reportSteps.add(RecoveryEvent.builder()
+                                .content("Automated mode disabled due to recovery loop detection")
+                                .date(OffsetDateTime.now())
+                                .type("exception")
+                                .build());
+        onUpdateProcedure();
+    }
+
     private void onFinishProcedure() {
         currentProcedure.setEnd(OffsetDateTime.now());
         currentProcedure.setState(executor.getStatus().getState().toString());
@@ -366,7 +383,6 @@ public class FSMListener implements IFSMListener {
 
     private void onUpdateProcedure() {
         currentProcedure.setState(executor.getStatus().getState().toString());
-        currentProcedure.setEventSummary(getSummary());
 
         if (persistResultsConsumer != null)
             persistResultsConsumer.accept(currentProcedure);

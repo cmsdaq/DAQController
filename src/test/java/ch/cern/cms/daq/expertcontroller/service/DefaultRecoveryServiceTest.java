@@ -242,7 +242,8 @@ class MockServicesProvider {
                 TestExecutorFactory.printRecoveryProcedurePersistor,
                 TestExecutorFactory.printOnUpdateConsumer,
                 TestExecutorFactory.isAvailableSupplier,
-                TestExecutorFactory.interruptConsumer
+                TestExecutorFactory.interruptConsumer,
+                TestExecutorFactory.loopBreakerConsumer
         );
         return executor;
 

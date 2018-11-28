@@ -126,6 +126,7 @@ public class TestExecutorFactory extends ExecutorFactory {
         }
     };
 
+
     public static BiConsumer<RecoveryProcedure, List<RecoveryEvent>> report = (rp, s) -> {
         logger.info("Reporting the acceptanceDecision: " + s);
         rp.setEventSummary(s);
@@ -157,7 +158,8 @@ public class TestExecutorFactory extends ExecutorFactory {
             printRecoveryProcedurePersistor,
             printOnUpdateConsumer,
             isAvailableSupplier,
-            interruptConsumer
+            interruptConsumer,
+            loopBreakerConsumer
     );
 
     public static IExecutor INTEGRATION_TEST_EXECUTOR = build(
@@ -172,7 +174,8 @@ public class TestExecutorFactory extends ExecutorFactory {
             persistResultsConsumer,
             printOnUpdateConsumer,
             isAvailableSupplier,
-            interruptConsumer
+            interruptConsumer,
+            loopBreakerConsumer
     );
 
 }

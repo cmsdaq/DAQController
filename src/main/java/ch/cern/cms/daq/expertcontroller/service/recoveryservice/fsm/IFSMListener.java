@@ -59,4 +59,6 @@ public interface IFSMListener {
 
     void onNewRcmsStatus(String status);
 
+    void onRecoveryLoopBreak();
+
 }

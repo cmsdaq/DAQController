@@ -151,6 +151,11 @@ class IFSMListenerMock implements IFSMListener {
     }
 
     @Override
+    public void onRecoveryLoopBreak() {
+        System.out.println("on recovery loop break");
+    }
+
+    @Override
     public List<RecoveryEvent> getSummary() {
         return null;
     }

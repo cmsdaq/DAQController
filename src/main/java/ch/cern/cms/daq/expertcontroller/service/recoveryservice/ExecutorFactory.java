@@ -7,6 +7,7 @@ import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryJobRepository;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
+import ch.cern.cms.daq.expertcontroller.service.LoopBreaker;
 import ch.cern.cms.daq.expertcontroller.service.rcms.LV0AutomatorControlException;
 import ch.cern.cms.daq.expertcontroller.service.rcms.RcmsController;
 import ch.cern.cms.daq.expertcontroller.service.recoveryservice.fsm.FSM;
@@ -46,6 +47,9 @@ public class ExecutorFactory {
     @Autowired
     IExecutor executor;
 
+    @Autowired
+    LoopBreaker loopBreaker;
+
     @Value("${observe.period}")
     private Integer observePeriod;
 
@@ -55,7 +59,7 @@ public class ExecutorFactory {
     protected static IRecoveryService srecoveryService;
     protected static IExecutor sexecutor;
     static private Integer sobservePeriod;
-
+    protected static LoopBreaker sloopBreaker;
 
 
     @PostConstruct
@@ -66,8 +70,9 @@ public class ExecutorFactory {
         ExecutorFactory.srecoveryService = recoveryService;
         ExecutorFactory.sexecutor = executor;
         ExecutorFactory.sobservePeriod = observePeriod;
+        ExecutorFactory.sloopBreaker = loopBreaker;
 
-        logger.info(String.format("Observe period is %s ms",sobservePeriod));
+        logger.info(String.format("Observe period is %s ms", sobservePeriod));
 
         rcmsController.setRcmsStatusConsumer(rcmsStatusChangeConsumer);
     }
@@ -86,7 +91,9 @@ public class ExecutorFactory {
             Consumer<RecoveryProcedure> persistConsumer,
             Consumer<RecoveryProcedure> onUpdateConsumer,
             Supplier<Boolean> availabilityConsumer,
-            Runnable interruptConsumer) {
+            Runnable interruptConsumer,
+            Function<RecoveryProcedure, Boolean> loopBreakerConsumer
+    ) {
 
         IFSMListener listener = FSMListener.builder()
                 .persistResultsConsumer(persistConsumer)
@@ -109,6 +116,7 @@ public class ExecutorFactory {
                 .executionTimeout(executionTimeout)
                 .interruptConsumer(interruptConsumer)
                 .isBusyConsumer(availabilityConsumer)
+                .loopBreakerConumer(loopBreakerConsumer)
                 .build();
         ((FSMListener) listener).setExecutor(executor);
 
@@ -191,12 +199,11 @@ public class ExecutorFactory {
     public static Consumer<RecoveryProcedure> persistResultsConsumer = recoveryProcedure -> {
 
         logger.info("Updating recovery procedure " + recoveryProcedure.getId());
-        recoveryProcedure.getExecutedJobs().stream().forEach(job->{
+        recoveryProcedure.getExecutedJobs().stream().forEach(job -> {
 
-                srecoveryJobRepository.save(job);
+            srecoveryJobRepository.save(job);
         });
         srecoveryProcedureRepository.save(recoveryProcedure);
-
 
 
     };
@@ -241,10 +248,31 @@ public class ExecutorFactory {
         return isAvailable;
     };
 
+    public static Function<RecoveryProcedure, Boolean> loopBreakerConsumer = recoveryProcedure -> {
+
+        boolean preventDueToLoopDetected = false;
+
+        if (recoveryProcedure.getExecutionMode() == ExecutionMode.Automated &&
+                sloopBreaker.exceedsTheLimit()) {
+            logger.info(String.format(
+                    "Loop detected," +
+                            " automated execution limit reached. " +
+                            "Limit is maximum %s automatic recoveries oover time period of %s seconds",
+                    sloopBreaker.getNumberOfExecutions(), sloopBreaker.getTimeWindow()));
+            preventDueToLoopDetected = true;
+        }
+
+        if (recoveryProcedure.getExecutionMode() == ExecutionMode.Automated &&
+                !preventDueToLoopDetected) {
+            sloopBreaker.registerAccepted();
+        }
+        return preventDueToLoopDetected;
+
+    };
 
     public static BiConsumer<RecoveryProcedure, List<RecoveryEvent>> report = (rp, s) -> {
-        logger.info("Reporting the acceptanceDecision: " + s);
-        rp.setEventSummary(s);
+        logger.info("Reporting: " + s);
+        // steps are preserved anyway
     };
 
     public static IExecutor DEFAULT_EXECUTOR = build(
@@ -254,12 +282,13 @@ public class ExecutorFactory {
             recoveryJobConsumer,
             report,
             fixedDelayObserver,
-            3600 , //TODO: 1h of timeout
+            3600, //TODO: 1h of timeout
             600,
             persistResultsConsumer,
             onProcedureUpdateConsumer,
             isAvailableSupplier,
-            interruptConsumer
+            interruptConsumer,
+            loopBreakerConsumer
 
     );
 
@@ -275,7 +304,8 @@ public class ExecutorFactory {
             persistResultsConsumer,
             onProcedureUpdateConsumer,
             fakeIsAvailableSupplier,
-            interruptFakeConsumer
+            interruptFakeConsumer,
+            loopBreakerConsumer
 
     );
 

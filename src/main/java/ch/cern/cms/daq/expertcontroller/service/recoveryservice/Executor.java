@@ -56,6 +56,9 @@ public class Executor implements IExecutor {
     @Getter
     protected ExecutionMode executionMode;
 
+    /**
+     * Execution mode for particular procedure
+     */
     protected ExecutionMode executionModeForProcedure;
 
     /**
@@ -69,6 +72,8 @@ public class Executor implements IExecutor {
     protected BiConsumer<RecoveryProcedure, List<RecoveryEvent>> statusReportConsumer;
 
     protected Runnable interruptConsumer;
+
+    protected Function<RecoveryProcedure, Boolean> loopBreakerConumer;
 
     /**
      * Check if underlying job consumer is busy. In RCMS case that might be the manual recovery.
@@ -112,14 +117,26 @@ public class Executor implements IExecutor {
     @Override
     public List<RecoveryEvent> start(RecoveryProcedure recoveryProcedure, boolean wait) {
         executedProcedure = recoveryProcedure;
+        listener.setCurrentProcedure(recoveryProcedure);
 
+        /* Note execution mode of the procedure */
         executionModeForProcedure = recoveryProcedure.getExecutionMode();
         if (executionModeForProcedure == null)
             executionModeForProcedure = ExecutionMode.ApprovalDriven; // default execution mode if not specified
 
+
+        /* Break loops if executor in Automated mode */
+        if(executionMode == ExecutionMode.Automated) {
+            Boolean prevent = loopBreakerConumer.apply(recoveryProcedure);
+            if (prevent) {
+                logger.info("Switching execution mode for this procedure to ApprovalDriven due to break detection");
+                executionModeForProcedure = ExecutionMode.ApprovalDriven;
+                listener.onRecoveryLoopBreak();
+            }
+        }
+
         executedProcedure.getProcedure().stream().forEach(j -> j.setProcedureId(executedProcedure.getId()));
 
-        listener.setCurrentProcedure(recoveryProcedure);
         Thread thread = new Thread(() -> fsm.transition(FSMEvent.RecoveryStarts));
         thread.start();
         if (wait) {
@@ -275,18 +292,25 @@ public class Executor implements IExecutor {
         logger.warn(String.format("Executor consuming job approval in %s execution mode, procedure is %s",
                                   executionMode, executionModeForProcedure));
 
+        /* Approval driven mode */
         if (executionMode == ExecutionMode.ApprovalDriven ||
                 executionModeForProcedure == ExecutionMode.ApprovalDriven) {
             logger.info("Passing to manual approval consumer");
             future = executorService.submit(() -> manualJobApprovalConsumer.apply(recoveryJob));
-        } else if (
-                executionMode == ExecutionMode.Automated
-                        && executionModeForProcedure == ExecutionMode.Automated
-                        && automatedApprovalConsumer != null
+        }
+
+        /* Automated mode */
+        else if (
+                executionMode == ExecutionMode.Automated &&
+                        executionModeForProcedure == ExecutionMode.Automated &&
+                        automatedApprovalConsumer != null
                 ) {
             logger.info("Passing to automated approval consumer");
             future = executorService.submit(() -> automatedApprovalConsumer.apply(recoveryJob));
-        } else {
+        }
+
+        /* Fallback - approval driven */
+        else {
             logger.warn("Problem with executor mode: using the most safe: approval driven");
             future = executorService.submit(() -> manualJobApprovalConsumer.apply(recoveryJob));
         }
