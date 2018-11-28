@@ -538,16 +538,27 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
 
     @Override
     public InterruptResponse interrupt() {
+
+        InterruptResponse.InterruptResponseBuilder builder = InterruptResponse.builder();
+
         logger.info("Handling interrupting signal");
         if (recoveryProcedureExecutor.getStatus().getState() != State.Idle) {
             recoveryProcedureExecutor.interrupt();
-            return InterruptResponse.builder().status("accepted").message("").build();
+            builder.status("accepted");
+
+            if(recoveryProcedureExecutor.getExecutionMode() == ExecutionMode.Automated){
+                logger.info("Disabling Automated execution mode");
+                String result = enableAutomation(false);
+                builder.message("Additionally automated mode has been disabled: " + result);
+            }
+
         } else {
             logger.info("Executor is in idle state, ignoring interrupt signal");
-            return InterruptResponse.builder()
-                    .status("ignored")
-                    .message("Executor is in idle state, ignoring interrupt signal").build();
+            builder.status("ignored")
+                    .message("Executor is in idle state, ignoring interrupt signal");
         }
+
+        return builder.build();
     }
 
     @Override
