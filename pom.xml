@@ -5,7 +5,7 @@
 
 	<groupId>ch.cern.cms.daq</groupId>
 	<artifactId>expert-controller</artifactId>
-	<version>2.0.2</version>
+	<version>2.0.3</version>
 	<packaging>war</packaging>
 
 	<name>expert-controller</name>
