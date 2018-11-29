@@ -133,6 +133,7 @@ public class FSMListener implements IFSMListener {
                                 .type("processing")
                                 .build());
         executor.setForceAccept(true);
+        onUpdateProcedure();
 
         return null;
     }
@@ -144,6 +145,7 @@ public class FSMListener implements IFSMListener {
                                 .date(OffsetDateTime.now())
                                 .type("processing")
                                 .build());
+        onUpdateProcedure();
 
         return null;
     }

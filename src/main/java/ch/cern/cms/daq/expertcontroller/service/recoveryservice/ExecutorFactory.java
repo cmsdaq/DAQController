@@ -4,6 +4,7 @@ import ch.cern.cms.daq.expertcontroller.datatransfer.ApprovalRequest;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryEvent;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryJob;
 import ch.cern.cms.daq.expertcontroller.entity.RecoveryProcedure;
+import ch.cern.cms.daq.expertcontroller.repository.RecoveryEventRepository;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryJobRepository;
 import ch.cern.cms.daq.expertcontroller.repository.RecoveryProcedureRepository;
 import ch.cern.cms.daq.expertcontroller.service.IRecoveryService;
@@ -42,6 +43,9 @@ public class ExecutorFactory {
     RecoveryJobRepository recoveryJobRepository;
 
     @Autowired
+    RecoveryEventRepository recoveryEventRepository;
+
+    @Autowired
     IRecoveryService recoveryService;
 
     @Autowired
@@ -56,6 +60,7 @@ public class ExecutorFactory {
     protected static RcmsController srcmsController;
     protected static RecoveryProcedureRepository srecoveryProcedureRepository;
     protected static RecoveryJobRepository srecoveryJobRepository;
+    protected static RecoveryEventRepository srecoveryEventRepository;
     protected static IRecoveryService srecoveryService;
     protected static IExecutor sexecutor;
     static private Integer sobservePeriod;
@@ -67,6 +72,7 @@ public class ExecutorFactory {
         ExecutorFactory.srcmsController = rcmsController;
         ExecutorFactory.srecoveryProcedureRepository = recoveryProcedureRepository;
         ExecutorFactory.srecoveryJobRepository = recoveryJobRepository;
+        ExecutorFactory.srecoveryEventRepository = recoveryEventRepository;
         ExecutorFactory.srecoveryService = recoveryService;
         ExecutorFactory.sexecutor = executor;
         ExecutorFactory.sobservePeriod = observePeriod;
@@ -202,6 +208,10 @@ public class ExecutorFactory {
         recoveryProcedure.getExecutedJobs().stream().forEach(job -> {
 
             srecoveryJobRepository.save(job);
+        });
+
+        recoveryProcedure.getEventSummary().stream().forEach(event->{
+            srecoveryEventRepository.save(event);
         });
         srecoveryProcedureRepository.save(recoveryProcedure);
 

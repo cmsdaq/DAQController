@@ -121,7 +121,6 @@ public class Executor implements IExecutor {
     public List<RecoveryEvent> start(RecoveryProcedure recoveryProcedure, boolean wait) {
         executedProcedure = recoveryProcedure;
         receivedFinished = false;
-        listener.setCurrentProcedure(recoveryProcedure);
 
         /* Note execution mode of the procedure */
         executionModeForProcedure = recoveryProcedure.getExecutionMode();
@@ -129,19 +128,29 @@ public class Executor implements IExecutor {
             executionModeForProcedure = ExecutionMode.ApprovalDriven; // default execution mode if not specified
 
 
+        boolean reportModeChange = false;
         /* Break loops if executor in Automated mode */
         if(executionMode == ExecutionMode.Automated) {
             Boolean prevent = loopBreakerConumer.apply(recoveryProcedure);
             if (prevent) {
                 logger.info("Switching execution mode for this procedure to ApprovalDriven due to break detection");
                 executionModeForProcedure = ExecutionMode.ApprovalDriven;
-                listener.onRecoveryLoopBreak();
+                reportModeChange = true;
             }
         }
 
         executedProcedure.getProcedure().stream().forEach(j -> j.setProcedureId(executedProcedure.getId()));
 
-        Thread thread = new Thread(() -> fsm.transition(FSMEvent.RecoveryStarts));
+        final boolean finalReportModeChange = reportModeChange;
+        Thread thread = new Thread(() -> {
+            listener.setCurrentProcedure(recoveryProcedure);
+
+            if(finalReportModeChange){
+                listener.onRecoveryLoopBreak();
+            }
+
+            fsm.transition(FSMEvent.RecoveryStarts);
+        });
         thread.start();
         if (wait) {
             try {

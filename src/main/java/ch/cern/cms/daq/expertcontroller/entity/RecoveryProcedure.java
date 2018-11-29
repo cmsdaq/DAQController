@@ -49,7 +49,7 @@ public class RecoveryProcedure {
     @OrderColumn(name = "list_index")
     private List<RecoveryJob> executedJobs;
 
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(fetch = FetchType.EAGER)
     @JoinColumn(name = "recovery_procedure_id")
     @OrderColumn(name = "list_index")
     private List<RecoveryEvent> eventSummary;
