@@ -80,7 +80,7 @@ public class DashboardController {
      * @param recoveryServiceStatus data transfer object describing status of current recovery
      */
     public void notifyRecoveryStatus(RecoveryServiceStatus recoveryServiceStatus) {
-        logger.info("Notifying dashboard status changed: " + recoveryServiceStatus);
+        logger.debug("Notifying dashboard status changed: " + recoveryServiceStatus);
         this.template.convertAndSend("/topic/recovery-status", recoveryServiceStatus);
     }
 
