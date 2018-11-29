@@ -110,20 +110,27 @@ public class TestExecutorFactory extends ExecutorFactory {
         }
     };
 
-    public static Supplier<FSMEvent> fixedDelayObserver = new Supplier<FSMEvent>() {
+    public static Supplier<FSMEvent> fixedDelayObserver = () -> {
 
+        logger.info("Observing the system for " + observingTime + " ms");
 
-        @Override
-        public FSMEvent get() {
-            logger.info("Observing the system");
-            try {
-                Thread.sleep(observingTime);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            logger.info("Timeout");
+        try {
+            Thread.sleep(observingTime);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        if(sexecutor.isReceivedFinished()){
+
+            logger.info("Observation finished and received finished signal");
+            return FSMEvent.Finished;
+
+        } else{
+            logger.info("Timeout of observation");
             return FSMEvent.NoEffect;
         }
+
+
     };
 
 
@@ -152,7 +159,8 @@ public class TestExecutorFactory extends ExecutorFactory {
             null,
             ExecutionMode.ApprovalDriven,
             recoveryJobConsumerThatCompletesImmediately,
-            report, observerThatTimeoutsImmediately,
+            report,
+            observerThatTimeoutsImmediately,
             1,
             1,
             printRecoveryProcedurePersistor,

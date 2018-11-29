@@ -109,6 +109,9 @@ public class Executor implements IExecutor {
     @Setter
     private boolean forceAccept;
 
+    @Getter
+    private boolean receivedFinished;
+
     @Override
     public List<RecoveryEvent> start(RecoveryProcedure recoveryProcedure) {
         return start(recoveryProcedure, false);
@@ -117,6 +120,7 @@ public class Executor implements IExecutor {
     @Override
     public List<RecoveryEvent> start(RecoveryProcedure recoveryProcedure, boolean wait) {
         executedProcedure = recoveryProcedure;
+        receivedFinished = false;
         listener.setCurrentProcedure(recoveryProcedure);
 
         /* Note execution mode of the procedure */
@@ -152,13 +156,28 @@ public class Executor implements IExecutor {
     @Override
     public void continueCurrentProcedure() {
 
+        // always async
+        boolean wait = false;
+
+        receivedFinished = false;
+
         if (fsm.getState() == State.Observe) {
             logger.info("Cancelling observation job on continue procedure signal");
             future.cancel(true);
         }
         listener.onProcedureContinues();
         logger.info("Sending NoEffect to FSM based on request to continue");
-        fsm.transition(FSMEvent.NoEffect);
+
+        Thread thread = new Thread(() -> fsm.transition(FSMEvent.NoEffect));
+        thread.start();
+        if (wait) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     @Override
@@ -266,9 +285,10 @@ public class Executor implements IExecutor {
     @Override
     public boolean finished() {
         if (fsm.getState() == State.Observe) {
-            logger.info("Cancelling observation job on finished");
-            future.cancel(true);
-            fsm.transition(FSMEvent.Finished);
+            receivedFinished = true;
+            //logger.info("Cancelling observation job on finished");
+            //future.cancel(true);
+            //fsm.transition(FSMEvent.Finished);
         } else if (fsm.getState() == State.Recovering) {
             return false;
         } else if (fsm.getState() == State.AwaitingApproval || fsm.getState() == State.SelectingJob) {

@@ -170,23 +170,23 @@ public class ExecutorFactory {
     public static Supplier<FSMEvent> fixedDelayObserver = () -> {
 
         logger.info("Observing the system for " + sobservePeriod + " ms");
-//        try {
-//            Thread.sleep(1000);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//        if (Math.random() < 0.3) {
-//            logger.info("Received finished signal");
-//            return FSMEvent.Finished;
-//        }
 
         try {
             Thread.sleep(sobservePeriod);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        logger.info("Timeout of observation");
-        return FSMEvent.NoEffect;
+
+        if(sexecutor.isReceivedFinished()){
+
+            logger.info("Observation finished and received finished signal");
+            return FSMEvent.Finished;
+
+        } else{
+            logger.info("Timeout of observation");
+            return FSMEvent.NoEffect;
+        }
+
 
     };
 

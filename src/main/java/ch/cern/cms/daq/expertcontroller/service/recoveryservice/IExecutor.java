@@ -123,4 +123,6 @@ public interface IExecutor {
 
     ExecutionMode getExecutionMode();
 
+    boolean isReceivedFinished();
+
 }

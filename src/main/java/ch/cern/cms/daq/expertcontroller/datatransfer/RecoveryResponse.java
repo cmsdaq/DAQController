@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * Response to expert. Data transfer object
  */
@@ -32,6 +34,6 @@ public class RecoveryResponse {
     /**
      * Id of the same (other instance the same problem) condition it continues
      */
-    private Long continuesTheConditionId;
+    private List<Long> continuesTheConditionIds;
 
 }

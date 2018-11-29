@@ -127,6 +127,7 @@ public abstract class DefaultRecoveryService implements IRecoveryService {
                 procedureToContinue.getProblemIds().add(request.getProblemId());
                 recoveryProcedureExecutor.continueCurrentProcedure();
                 //TODO: set which problem id is continued (Expert must match?)
+                response.setContinuesTheConditionIds(procedureToContinue.getProblemIds());
 
                 break;
             case "acceptedToPostpone":
