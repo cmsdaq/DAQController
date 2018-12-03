@@ -48,8 +48,7 @@ public class RcmsController {
             logger.debug("Request generates TTC Hard Reset");
             sendTTCHardReset();
         }
-        // TODO: check if this should be executed
-        if (isLongRecovery(recoveryJob)) {
+        else {
             logger.debug("Request generates recover & wait");
             recoverAndWait(recoveryJob);
         }
